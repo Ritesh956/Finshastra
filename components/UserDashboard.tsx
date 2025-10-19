@@ -1,125 +1,142 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Calendar } from "@/components/ui/calendar"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { AlertCircle, DollarSign, CalendarIcon, TrendingUp, PlusCircle, Percent, Clock } from "lucide-react"
-import { RadialBarChart, RadialBar, ResponsiveContainer, Tooltip } from "recharts"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AlertCircle, CalendarIcon, TrendingUp, Bell, CreditCard, Wallet } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+} from "recharts"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 
-interface Loan {
+interface UserLoan {
   id: string
   name: string
-  amount: number
-  interestRate: number
-  term: number
-  startDate: Date
-  nextPaymentDue: Date
   outstandingBalance: number
+  nextPaymentDue: Date
+  totalInterestPaid: number
+  isOverdue: boolean
+  emi: number
+  notificationsEnabled: boolean
 }
 
-const mockLoans: Loan[] = [
+const mockUserLoans: UserLoan[] = [
   {
     id: "1",
     name: "Home Loan",
-    amount: 200000,
-    interestRate: 3.5,
-    term: 360,
-    startDate: new Date("2023-01-01"),
-    nextPaymentDue: new Date("2023-02-01"),
-    outstandingBalance: 198000,
+    outstandingBalance: 200000,
+    nextPaymentDue: new Date(2023, 5, 15),
+    totalInterestPaid: 15000,
+    isOverdue: false,
+    emi: 1500,
+    notificationsEnabled: true,
   },
   {
     id: "2",
     name: "Car Loan",
-    amount: 30000,
-    interestRate: 4.5,
-    term: 60,
-    startDate: new Date("2023-03-01"),
-    nextPaymentDue: new Date("2023-04-01"),
-    outstandingBalance: 29000,
+    outstandingBalance: 15000,
+    nextPaymentDue: new Date(2023, 5, 1),
+    totalInterestPaid: 2000,
+    isOverdue: true,
+    emi: 500,
+    notificationsEnabled: false,
   },
   {
     id: "3",
     name: "Personal Loan",
-    amount: 10000,
-    interestRate: 6.0,
-    term: 36,
-    startDate: new Date("2023-05-01"),
-    nextPaymentDue: new Date("2023-06-01"),
-    outstandingBalance: 9800,
+    outstandingBalance: 5000,
+    nextPaymentDue: new Date(2023, 5, 30),
+    totalInterestPaid: 500,
+    isOverdue: false,
+    emi: 200,
+    notificationsEnabled: true,
   },
 ]
 
-const recommendedLoans = [
+const mockPaymentHistory = [
+  { month: "Jan", amount: 2000 },
+  { month: "Feb", amount: 2200 },
+  { month: "Mar", amount: 1800 },
+  { month: "Apr", amount: 2400 },
+  { month: "May", amount: 2100 },
+  { month: "Jun", amount: 2300 },
+]
+
+interface BankLoanOffer {
+  id: string
+  bankName: string
+  loanType: string
+  interestRate: number
+  maxAmount: number
+  maxTenure: number
+  processingFee: number
+  features: string[]
+}
+
+const mockBankLoanOffers: BankLoanOffer[] = [
   {
-    name: "Low-Interest Home Loan",
-    interestRate: 2.9,
-    term: 360,
+    id: "1",
+    bankName: "ABC Bank",
+    loanType: "Personal Loan",
+    interestRate: 8.5,
     maxAmount: 500000,
-    description: "Ideal for first-time homebuyers with excellent credit scores.",
+    maxTenure: 60,
+    processingFee: 1,
+    features: ["No collateral required", "Flexible repayment options", "Quick approval"],
   },
   {
-    name: "Flexible Personal Loan",
-    interestRate: 5.5,
-    term: 60,
-    maxAmount: 50000,
-    description: "Great for debt consolidation or major purchases.",
+    id: "2",
+    bankName: "XYZ Bank",
+    loanType: "Home Loan",
+    interestRate: 6.75,
+    maxAmount: 5000000,
+    maxTenure: 360,
+    processingFee: 0.5,
+    features: ["Low interest rates", "Long repayment tenure", "Property insurance included"],
   },
   {
-    name: "Student Refinance Loan",
-    interestRate: 3.5,
-    term: 120,
-    maxAmount: 100000,
-    description: "Refinance your existing student loans at a lower rate.",
+    id: "3",
+    bankName: "123 Financial",
+    loanType: "Business Loan",
+    interestRate: 10,
+    maxAmount: 1000000,
+    maxTenure: 84,
+    processingFee: 2,
+    features: ["No security required up to 30 lakhs", "Customized repayment options", "Dedicated relationship manager"],
   },
 ]
 
 export function UserDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [loans, setLoans] = useState<Loan[]>(mockLoans)
+  const [loans, setLoans] = useState<UserLoan[]>(mockUserLoans)
   const [newLoan, setNewLoan] = useState({
     name: "",
-    amount: 0,
-    interestRate: 0,
-    term: 0,
-    startDate: new Date(),
+    outstandingBalance: 0,
+    emi: 0,
+    nextPaymentDue: new Date(),
   })
+  const [isAddingLoan, setIsAddingLoan] = useState(false)
+  const [selectedLoan, setSelectedLoan] = useState<string | null>(null)
 
-  const totalOutstanding = loans.reduce((sum, loan) => sum + loan.outstandingBalance, 0)
-  const totalInterestPaid = loans.reduce((sum, loan) => {
-    const monthlyRate = loan.interestRate / 12 / 100
-    const monthlyPayment =
-      (loan.amount * monthlyRate * Math.pow(1 + monthlyRate, loan.term)) / (Math.pow(1 + monthlyRate, loan.term) - 1)
-    const totalPayments = monthlyPayment * loan.term
-    return sum + (totalPayments - loan.amount)
-  }, 0)
-
-  const handleAddLoan = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newLoanWithId: Loan = {
-      ...newLoan,
-      id: (loans.length + 1).toString(),
-      nextPaymentDue: new Date(newLoan.startDate.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days after start date
-      outstandingBalance: newLoan.amount,
-    }
-    setLoans([...loans, newLoanWithId])
-    setNewLoan({
-      name: "",
-      amount: 0,
-      interestRate: 0,
-      term: 0,
-      startDate: new Date(),
-    })
-  }
-
-  const getDueDates = (date: Date): Loan[] => {
+  const getDueDates = (date: Date): UserLoan[] => {
     return loans.filter(
       (loan) =>
         loan.nextPaymentDue.getDate() === date.getDate() &&
@@ -128,22 +145,45 @@ export function UserDashboard() {
     )
   }
 
-  const radialChartData = loans.map((loan, index) => ({
-    name: loan.name,
-    outstandingBalance: loan.outstandingBalance,
-    fill: `hsl(${index * 60}, 100%, 50%)`,
-  }))
+  const totalOutstanding = loans.reduce((sum, loan) => sum + loan.outstandingBalance, 0)
+  const totalInterestPaid = loans.reduce((sum, loan) => sum + loan.totalInterestPaid, 0)
+
+  const handleAddLoan = (e: React.FormEvent) => {
+    e.preventDefault()
+    const newLoanWithId: UserLoan = {
+      ...newLoan,
+      id: (loans.length + 1).toString(),
+      totalInterestPaid: 0,
+      isOverdue: false,
+      notificationsEnabled: true,
+    }
+    setLoans([...loans, newLoanWithId])
+    setNewLoan({ name: "", outstandingBalance: 0, emi: 0, nextPaymentDue: new Date() })
+    setIsAddingLoan(false)
+  }
+
+  const handleLoanAction = (loanId: string, action: string) => {
+    setSelectedLoan(loanId)
+    // Implement actions like view details, edit, delete, etc.
+    console.log(`${action} loan with id: ${loanId}`)
+  }
+
+  const toggleNotifications = (loanId: string) => {
+    setLoans(
+      loans.map((loan) => (loan.id === loanId ? { ...loan, notificationsEnabled: !loan.notificationsEnabled } : loan)),
+    )
+  }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-100" />
+            <Wallet className="h-4 w-4 text-blue-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalOutstanding.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${totalOutstanding.toFixed(2)}</div>
             <p className="text-xs text-blue-100">Across all loans</p>
           </CardContent>
         </Card>
@@ -153,80 +193,178 @@ export function UserDashboard() {
             <TrendingUp className="h-4 w-4 text-green-100" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalInterestPaid.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${totalInterestPaid.toFixed(2)}</div>
             <p className="text-xs text-green-100">Lifetime interest payments</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
-            <CalendarIcon className="h-4 w-4 text-purple-100" />
+            <CreditCard className="h-4 w-4 text-purple-100" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{loans.length}</div>
             <p className="text-xs text-purple-100">Currently active loans</p>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
+        <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Next Payment</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-100" />
+            <CalendarIcon className="h-4 w-4 text-yellow-100" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {new Date(Math.min(...loans.map((loan) => loan.nextPaymentDue.getTime()))).toLocaleDateString()}
             </div>
-            <p className="text-xs text-red-100">Upcoming payment due</p>
+            <p className="text-xs text-yellow-100">Upcoming payment due</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 lg:max-w-[400px]">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="loans">Loans</TabsTrigger>
-          <TabsTrigger value="add-loan">Add Loan</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Loan Distribution</CardTitle>
-              </CardHeader>
-              <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadialBarChart
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="10%"
-                    outerRadius="80%"
-                    barSize={20}
-                    data={radialChartData}
-                  >
-                    <RadialBar minAngle={15} background clockWise dataKey="outstandingBalance" />
-                    <Tooltip
-                      content={({ payload }) => {
-                        if (payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-white p-2 rounded shadow">
-                              <p className="font-semibold text-black">{data.name}</p>
-                              <p className="text-black">₹{data.outstandingBalance.toFixed(2)}</p>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                  </RadialBarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Repayment Schedule</CardTitle>
-              </CardHeader>
-              <CardContent>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-slate-900/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Loan Overview</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              {loans.map((loan) => (
+                <div key={loan.id} className="flex flex-col sm:flex-row sm:items-center">
+                  <div className="space-y-1 flex-1">
+                    <div className="text-sm font-medium leading-none">
+                      {loan.name}
+                      {loan.isOverdue && (
+                        <Badge variant="destructive" className="ml-2">
+                          Overdue
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-400">
+                      Next payment: {loan.nextPaymentDue.toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between sm:justify-end mt-2 sm:mt-0">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="font-medium cursor-help mr-4 text-white">${loan.outstandingBalance.toFixed(2)}</div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Outstanding balance</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id={`notifications-${loan.id}`}
+                        checked={loan.notificationsEnabled}
+                        onCheckedChange={() => toggleNotifications(loan.id)}
+                      />
+                      <Label htmlFor={`notifications-${loan.id}`}>
+                        <Bell className="h-4 w-4" />
+                      </Label>
+                      <Button size="sm" onClick={() => handleLoanAction(loan.id, "view")}>
+                        View
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleLoanAction(loan.id, "edit")}>
+                        Edit
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Payment History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={mockPaymentHistory}>
+                  <defs>
+                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <RechartsTooltip />
+                  <Area type="monotone" dataKey="amount" stroke="#8884d8" fillOpacity={1} fill="url(#colorAmount)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-slate-900/50 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">Loan Management</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="add-loan" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-slate-800">
+              <TabsTrigger value="add-loan" className="data-[state=active]:bg-slate-700">Add New Loan</TabsTrigger>
+              <TabsTrigger value="repayment-schedule" className="data-[state=active]:bg-slate-700">Repayment Schedule</TabsTrigger>
+            </TabsList>
+            <TabsContent value="add-loan">
+              {isAddingLoan && (
+                <form onSubmit={handleAddLoan} className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="loanName">Loan Name</Label>
+                      <Input
+                        id="loanName"
+                        value={newLoan.name}
+                        onChange={(e) => setNewLoan({ ...newLoan, name: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="outstandingBalance">Outstanding Balance</Label>
+                      <Input
+                        id="outstandingBalance"
+                        type="number"
+                        value={newLoan.outstandingBalance}
+                        onChange={(e) => setNewLoan({ ...newLoan, outstandingBalance: Number(e.target.value) })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="emi">EMI</Label>
+                      <Input
+                        id="emi"
+                        type="number"
+                        value={newLoan.emi}
+                        onChange={(e) => setNewLoan({ ...newLoan, emi: Number(e.target.value) })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="nextPaymentDue">Next Payment Due</Label>
+                      <Input
+                        id="nextPaymentDue"
+                        type="date"
+                        value={newLoan.nextPaymentDue.toISOString().split("T")[0]}
+                        onChange={(e) => setNewLoan({ ...newLoan, nextPaymentDue: new Date(e.target.value) })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Save Loan
+                  </Button>
+                </form>
+              )}
+            </TabsContent>
+            <TabsContent value="repayment-schedule">
+              <div className="mt-4 space-y-4">
                 <div className="flex flex-col space-y-4">
                   <Calendar
                     mode="single"
@@ -235,192 +373,126 @@ export function UserDashboard() {
                     className="rounded-md border mx-auto"
                   />
                   <div>
-                    <h3 className="text-lg font-semibold mb-2">Payments due on {selectedDate?.toLocaleDateString()}</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-white">Payments due on {selectedDate?.toLocaleDateString()}</h3>
                     {getDueDates(selectedDate || new Date()).map((loan) => (
-                      <div key={loan.id} className="mb-2 flex justify-between items-center">
+                      <div key={loan.id} className="mb-2 flex justify-between items-center text-white">
                         <span>{loan.name}</span>
-                        <Badge variant="secondary">₹{(loan.amount / loan.term).toFixed(2)}</Badge>
+                        <span className="font-medium">${loan.emi.toFixed(2)}</span>
                       </div>
                     ))}
                     {getDueDates(selectedDate || new Date()).length === 0 && (
-                      <p className="text-muted-foreground">No payments due on this date.</p>
+                      <p className="text-slate-400">No payments due on this date.</p>
                     )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Loan Progress</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-8">
-                {loans.map((loan) => {
-                  const totalPayments = loan.amount * (1 + loan.interestRate / 100)
-                  const progress = ((totalPayments - loan.outstandingBalance) / totalPayments) * 100
-                  return (
-                    <div key={loan.id} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{loan.name}</span>
-                        <span>{progress.toFixed(0)}% paid</span>
-                      </div>
-                      <Progress value={progress} className="h-2" />
-                    </div>
-                  )
-                })}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="loans">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Loans</CardTitle>
-              <CardDescription>A list of your current active loans.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Interest Rate</TableHead>
-                    <TableHead>Outstanding Balance</TableHead>
-                    <TableHead>Next Payment Due</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loans.map((loan) => (
-                    <TableRow key={loan.id}>
-                      <TableCell className="font-medium">{loan.name}</TableCell>
-                      <TableCell>₹{loan.amount.toFixed(2)}</TableCell>
-                      <TableCell>{loan.interestRate}%</TableCell>
-                      <TableCell>₹{loan.outstandingBalance.toFixed(2)}</TableCell>
-                      <TableCell>{loan.nextPaymentDue.toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="add-loan">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Loan</CardTitle>
-              <CardDescription>Enter the details of your new loan below.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAddLoan} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="loanName">Loan Name</Label>
-                    <Input
-                      id="loanName"
-                      value={newLoan.name}
-                      onChange={(e) => setNewLoan({ ...newLoan, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Loan Amount</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      value={newLoan.amount || ""}
-                      onChange={(e) => {
-                        const value = e.target.value === "" ? 0 : Number(e.target.value)
-                        setNewLoan({ ...newLoan, amount: value })
-                      }}
-                      onFocus={(e) => e.target.value === "0" && (e.target.value = "")}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="interestRate">Interest Rate (%)</Label>
-                    <Input
-                      id="interestRate"
-                      type="number"
-                      step="0.1"
-                      value={newLoan.interestRate || ""}
-                      onChange={(e) => {
-                        const value = e.target.value === "" ? 0 : Number(e.target.value)
-                        setNewLoan({ ...newLoan, interestRate: value })
-                      }}
-                      onFocus={(e) => e.target.value === "0" && (e.target.value = "")}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="term">Loan Term (months)</Label>
-                    <Input
-                      id="term"
-                      type="number"
-                      value={newLoan.term || ""}
-                      onChange={(e) => {
-                        const value = e.target.value === "" ? 0 : Number(e.target.value)
-                        setNewLoan({ ...newLoan, term: value })
-                      }}
-                      onFocus={(e) => e.target.value === "0" && (e.target.value = "")}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="startDate">Start Date</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={newLoan.startDate.toISOString().split("T")[0]}
-                      onChange={(e) => setNewLoan({ ...newLoan, startDate: new Date(e.target.value) })}
-                      required
-                    />
-                  </div>
-                </div>
-                <Button type="submit" className="w-full">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Loan
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-      <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-slate-900/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Loan Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={loans}
+                    dataKey="outstandingBalance"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius="80%"
+                    fill="#8884d8"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {loans.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 60%)`} />
+                    ))}
+                  </Pie>
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900/50 border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-white">Loan Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-8">
+              {loans.map((loan) => {
+                const totalLoanAmount = loan.outstandingBalance + loan.totalInterestPaid
+                const progress = (loan.totalInterestPaid / totalLoanAmount) * 100
+                return (
+                  <div key={loan.id} className="space-y-2">
+                    <div className="flex justify-between text-sm text-white">
+                      <span>{loan.name}</span>
+                      <span>{progress.toFixed(0)}% paid</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {loans.some((loan) => loan.isOverdue) && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Overdue Payments</AlertTitle>
+          <AlertDescription>
+            You have overdue payments on one or more loans. Please make the payments as soon as possible to avoid
+            additional charges.
+          </AlertDescription>
+        </Alert>
+      )}
+      <Card className="bg-slate-900/50 border-slate-700">
         <CardHeader>
-          <CardTitle>Personalized Loan Recommendations</CardTitle>
-          <CardDescription>Based on your profile, here are some recommended loans:</CardDescription>
+          <CardTitle className="text-white">Bank Loan Offers</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {recommendedLoans.map((loan, index) => (
-              <Card key={index} className="flex flex-col h-full">
-                <CardHeader>
-                  <CardTitle>{loan.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <Percent className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span>Interest Rate: {loan.interestRate}%</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span>Term: {loan.term} months</span>
-                    </div>
-                    <div className="flex items-center">
-                      <DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span>Max Amount: ₹{loan.maxAmount.toLocaleString()}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{loan.description}</p>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full">Apply Now</Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Bank</TableHead>
+                <TableHead>Loan Type</TableHead>
+                <TableHead>Interest Rate</TableHead>
+                <TableHead>Max Amount</TableHead>
+                <TableHead>Max Tenure</TableHead>
+                <TableHead>Processing Fee</TableHead>
+                <TableHead>Features</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockBankLoanOffers.map((offer) => (
+                <TableRow key={offer.id} className="text-slate-300">
+                  <TableCell className="text-white font-medium">{offer.bankName}</TableCell>
+                  <TableCell>{offer.loanType}</TableCell>
+                  <TableCell>{offer.interestRate}%</TableCell>
+                  <TableCell>${offer.maxAmount.toLocaleString()}</TableCell>
+                  <TableCell>{offer.maxTenure} months</TableCell>
+                  <TableCell>{offer.processingFee}%</TableCell>
+                  <TableCell>
+                    <ul className="list-disc list-inside">
+                      {offer.features.map((feature, index) => (
+                        <li key={index} className="text-sm">
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
