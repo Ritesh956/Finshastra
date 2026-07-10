@@ -1,338 +1,99 @@
-﻿# 🏦 FinShastra - Smart Loan Management System
+# FinShastra — Smart Loan Management
 
-A modern, AI-powered loan management platform built with Next.js 14, featuring comprehensive loan tracking, comparison tools, and personalized recommendations.
+A full-stack loan-management platform built with Next.js 14. Track loans with real persistence, record EMI payments with correct amortization math, compare bank offers, and chat with an AI assistant that knows your actual portfolio.
 
-![FinShastra](https://img.shields.io/badge/Next.js-14.2.16-black?style=for-the-badge&logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
 ![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
+![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?style=for-the-badge&logo=prisma)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3-38B2AC?style=for-the-badge&logo=tailwind-css)
 
-## 🌟 Features
+## Features
 
-### 💼 Loan Management
-- **Dashboard Overview**: Track all your loans in one place
-- **Real-time Tracking**: Monitor outstanding balances, interest paid, and payment schedules
-- **EMI Calculator**: Calculate monthly installments with detailed breakdowns
-- **Payment Calendar**: Visual calendar showing all upcoming payment due dates
-- **Loan Progress**: Track repayment progress with interactive charts
+### Real, working functionality
+- **Authentication** — NextAuth.js with credentials provider, bcrypt-hashed passwords, JWT sessions, and middleware-protected routes (`/dashboard`, `/profile`)
+- **Persistent loan tracking** — loans live in a SQLite database via Prisma; add, delete, and pay EMIs and they survive restarts
+- **Correct EMI math** — standard amortization formula; each payment is split into interest and principal components, balance and next-due-date update in a transaction
+- **Payment history** — real monthly aggregates charted on the dashboard
+- **Bank offers** — seeded reference data served from the database, used by the comparison table and personalized recommendations
+- **AI Loan Assistant** — `/api/chat` calls Claude (Anthropic API) with the logged-in user's real loan portfolio as context; falls back to a built-in rule-based knowledge base when no API key is configured
+- **Personalized recommendations** — filters live bank offers against your income, expenses, and credit score (persisted to your profile when logged in)
+- **EMI notifications toggle** — per-loan setting persisted to the database
+- Loan comparison tool, repayment simulator, payment calendar, dark theme, responsive layout
 
-### 🔍 Smart Tools
-- **Loan Comparison**: Compare multiple loan offers side-by-side
-- **AI-Powered Recommendations**: Get personalized loan suggestions based on your profile
-- **Repayment Simulator**: Test different repayment scenarios
-- **Bank Offers**: Browse real-time loan offers from multiple banks
+### Honest limitations
+- No payment gateway — "Pay EMI" records a payment, it doesn't move money
+- No email/SMS delivery for notifications (the per-loan preference is stored, delivery is not implemented)
+- Password reset UI exists but doesn't send emails
+- SQLite is for development; swap `DATABASE_URL` to Postgres for production
 
-### 🔔 Notifications & Alerts
-- **Payment Reminders**: Never miss a payment with customizable alerts
-- **Overdue Warnings**: Instant notifications for overdue payments
-- **Rate Change Alerts**: Get notified when interest rates change
-
-### 🤖 AI Features
-- **AI Chatbot**: 24/7 assistance for loan-related queries
-- **Smart Insights**: AI-driven financial insights and recommendations
-- **Document Analysis**: Upload and analyze loan documents
-
-### 🎨 User Experience
-- **Dark Mode**: Sleek, modern dark theme throughout
-- **Responsive Design**: Optimized for desktop, tablet, and mobile
-- **Interactive Charts**: Beautiful visualizations using Recharts
-- **Smooth Animations**: Fluid transitions and micro-interactions
-
-## 🚀 Tech Stack
-
-### Frontend
-- **Framework**: [Next.js 14.2.16](https://nextjs.org/) (App Router)
-- **UI Library**: [React 18](https://react.dev/)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Component Library**: [shadcn/ui](https://ui.shadcn.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-
-### Data Visualization
-- **Charts**: [Recharts](https://recharts.org/)
-- **Progress Bars**: Custom animated components
-
-### State Management
-- **React Hooks**: useState, useEffect, useContext
-- **Context API**: Authentication & Theme management
-
-### Form Handling
-- **Validation**: Built-in HTML5 validation
-- **Date Handling**: Native Date API
-
-### Development Tools
-- **Package Manager**: npm
-- **Build Tool**: Next.js built-in compiler
-- **Code Quality**: ESLint
-- **Type Checking**: TypeScript
-
-## 📦 Installation
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+ installed
-- npm or yarn package manager
-- Git
+- Node.js 18+
 
-### Clone Repository
-```bash
-git clone https://github.com/Ritesh956/Finshastra.git
-cd Finshastra
-```
+### Setup
 
-### Install Dependencies
 ```bash
+# 1. Install dependencies
 npm install
-# or
-yarn install
-```
 
-### Run Development Server
-```bash
+# 2. Configure environment
+cp .env.example .env
+#    - DATABASE_URL: leave as-is for SQLite
+#    - NEXTAUTH_SECRET: generate with `openssl rand -base64 32`
+#    - ANTHROPIC_API_KEY: optional — enables the real AI chatbot
+
+# 3. Create the database and seed bank offers
+npx prisma migrate dev
+node prisma/seed.js
+
+# 4. Run the dev server
 npm run dev
-# or
-yarn dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000, sign up, and add your first loan.
 
-## 🏗️ Project Structure
-
-```
-Finshastra/
-├── app/                          # Next.js App Router
-│   ├── dashboard/               # Dashboard page
-│   ├── login/                   # Login page
-│   ├── signup/                  # Signup page
-│   ├── profile/                 # User profile page
-│   ├── forgot-password/         # Password reset page
-│   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Home page
-│   └── globals.css              # Global styles
-│
-├── components/                   # React components
-│   ├── ui/                      # shadcn/ui components
-│   │   ├── button.tsx
-│   │   ├── card.tsx
-│   │   ├── input.tsx
-│   │   └── ... (40+ UI components)
-│   │
-│   ├── AIChatbot.tsx           # AI assistant
-│   ├── AlertDialog.tsx          # Notification system
-│   ├── LoanCard.tsx            # Individual loan display
-│   ├── LoanComparisonTool.tsx  # Loan comparison
-│   ├── UserDashboard.tsx       # Main dashboard
-│   ├── LayoutContent.tsx       # Layout wrapper
-│   └── ... (more components)
-│
-├── contexts/                     # React contexts
-│   └── AuthContext.tsx          # Authentication state
-│
-├── lib/                         # Utility functions
-│   └── utils.ts                 # Helper functions
-│
-├── utils/                       # Business logic
-│   ├── loanCalculations.ts     # EMI calculations
-│   └── mockData.ts             # Sample data
-│
-├── public/                      # Static assets
-│   └── favicon.svg             # App icon
-│
-└── styles/                      # Additional styles
-    └── globals.css             # Extra global styles
-```
-
-## 🎨 Design System
-
-### Color Palette
-- **Primary**: Purple (#9333ea)
-- **Background**: Slate 950
-- **Cards**: Slate 900/50 (semi-transparent)
-- **Text**: White & Slate variants
-- **Accents**: Blue, Green, Yellow for different loan types
-
-### Typography
-- **Font**: System fonts (Inter, SF Pro)
-- **Headings**: Bold, Large sizes
-- **Body**: Regular weight, readable sizes
-
-### Components
-- All components follow shadcn/ui design principles
-- Consistent spacing and sizing
-- Accessible color contrasts
-- Smooth animations and transitions
-
-## 🔐 Authentication
-
-Currently using **mock authentication** stored in localStorage:
-
-- **Demo Users**:
-  - Email: `demo@example.com`
-  - Password: `demo123`
-
-### Features
-- Login/Signup forms
-- Password reset flow
-- Protected routes
-- User profile management
-
-**Note**: Replace with real authentication (NextAuth.js, Clerk, etc.) for production.
-
-## 📊 Key Features Breakdown
-
-### 1. Dashboard
-- **Overview Cards**: Total outstanding, interest paid, active loans, next payment
-- **Loan Overview**: List of all loans with quick actions
-- **Payment History**: Interactive area chart
-- **Loan Management**: Add new loans, view repayment schedule
-- **Loan Distribution**: Pie chart showing loan allocation
-- **Loan Progress**: Progress bars for each loan
-- **Bank Offers**: Table of available loan offers
-
-### 2. Loan Comparison Tool
-- Compare up to 3 loans simultaneously
-- Filter by loan type, interest rate, tenure
-- Sort by various parameters
-- Detailed comparison metrics
-
-### 3. AI Chatbot
-- Interactive chat interface
-- Pre-defined quick actions
-- Loan calculations
-- Document upload capability
-
-### 4. Repayment Simulator
-- Test different payment scenarios
-- Extra payment simulations
-- Early closure calculations
-- Visual comparison charts
-
-### 5. Notification System
-- Payment reminders
-- Overdue alerts
-- Rate change notifications
-- Customizable alert preferences
-
-## 🚢 Deployment
-
-### Netlify (Recommended)
-```bash
-# Build command
-npm run build
-
-# Publish directory
-.next
-```
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/Ritesh956/Finshastra)
-
-### Vercel
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ritesh956/Finshastra)
-
-### Docker
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-## 🧪 Testing
+### Tests
 
 ```bash
-# Run linter
-npm run lint
-
-# Type checking
-npx tsc --noEmit
-
-# Build test
-npm run build
+npm test          # Vitest — EMI math + knowledge base
+npx tsc --noEmit  # typecheck (also enforced during `next build`)
 ```
 
-## 📱 Browser Support
+## Tech Stack
 
-- ✅ Chrome (latest)
-- ✅ Firefox (latest)
-- ✅ Safari (latest)
-- ✅ Edge (latest)
-- ✅ Mobile browsers
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 14 (App Router), React 18, TypeScript |
+| Database | Prisma 6 + SQLite (dev) |
+| Auth | NextAuth.js v4, bcryptjs |
+| AI | Anthropic Claude API (`@anthropic-ai/sdk`) with rule-based fallback |
+| UI | Tailwind CSS, shadcn/ui, Radix, Recharts, lucide-react |
+| Tests | Vitest |
 
-## 🤝 Contributing
+## API Routes
 
-Contributions are welcome! Please follow these steps:
+| Route | Methods | Description |
+|---|---|---|
+| `/api/auth/[...nextauth]` | GET/POST | NextAuth session + credentials login |
+| `/api/auth/signup` | POST | Create account (validated, bcrypt-hashed) |
+| `/api/user/me` | GET/PATCH | Profile read/update |
+| `/api/loans` | GET/POST | List / create loans (session-scoped) |
+| `/api/loans/[id]` | PATCH/DELETE | Update (name, due date, notifications) / delete |
+| `/api/loans/[id]/payments` | POST | Record an EMI payment (amortized split) |
+| `/api/payments` | GET | Payment history + monthly chart aggregates |
+| `/api/bank-offers` | GET | Seeded bank loan offers |
+| `/api/chat` | POST | AI assistant (Claude or knowledge-base fallback) |
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## Roadmap
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👨‍💻 Author
-
-**Ritesh Gupta**
-- GitHub: [@Ritesh956](https://github.com/Ritesh956)
-- Repository: [FinShastra](https://github.com/Ritesh956/Finshastra)
-
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org/) - The React Framework
-- [shadcn/ui](https://ui.shadcn.com/) - Beautiful component library
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [Recharts](https://recharts.org/) - Composable charting library
-- [Lucide](https://lucide.dev/) - Beautiful icon library
-
-## 📞 Support
-
-For support, email riteshgupta@example.com or open an issue in the GitHub repository.
-
-## 🗺️ Roadmap
-
-- [ ] Backend API integration
-- [ ] Real authentication system
-- [ ] Database integration (PostgreSQL/MongoDB)
-- [ ] Real-time notifications via WebSockets
-- [ ] Mobile app (React Native)
-- [ ] PDF report generation
-- [ ] Multi-language support
-- [ ] Credit score integration
-- [ ] Payment gateway integration
-- [ ] Advanced analytics dashboard
-
-## 📈 Performance
-
-- ⚡ **Lighthouse Score**: 95+
-- 🎯 **First Contentful Paint**: < 1.5s
-- 📦 **Bundle Size**: Optimized with Next.js
-- 🔄 **Code Splitting**: Automatic route-based splitting
-
-## 🔒 Security
-
-- 🛡️ HTTPS enforced
-- 🔐 Password hashing (when using real auth)
-- 🚫 XSS protection
-- 🔒 CSRF protection
-- 📝 Input validation
-- 🎯 Secure headers
+- [ ] Payment gateway integration (Razorpay/Stripe)
+- [ ] Email/SMS EMI reminders (the toggle already persists per loan)
+- [ ] Real password reset flow
+- [ ] PDF statement export
+- [ ] Postgres + deployment config
 
 ---
 
-Made with ❤️ by Ritesh Gupta
-
-**Star ⭐ this repository if you find it helpful!**
-
+Crafted with care by **Ritesh Gupta**

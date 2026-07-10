@@ -21,9 +21,9 @@ interface UserProfileDropdownProps {
   user: {
     name: string
     email: string
-    phone: string
-    bank?: string
-    avatarUrl?: string
+    phone?: string | null
+    bank?: string | null
+    avatarUrl?: string | null
   }
 }
 
@@ -56,7 +56,7 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-primary border-2 border-transparent hover:border-blue-500">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={user.avatarUrl} alt={user.name} />
+            <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
             <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold text-lg shadow-lg">
               {getInitials(user.name)}
             </AvatarFallback>
@@ -68,7 +68,7 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
           <CardHeader className="pb-3">
             <div className="flex items-center space-x-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={user.avatarUrl} alt={user.name} />
+                <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white font-bold text-2xl">
                   {getInitials(user.name)}
                 </AvatarFallback>
@@ -82,7 +82,7 @@ export function UserProfileDropdown({ user }: UserProfileDropdownProps) {
           <CardContent className="space-y-3 pt-3">
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground dark:text-slate-400">Phone</Label>
-              <p className="text-sm font-medium dark:text-white">{user.phone}</p>
+              <p className="text-sm font-medium dark:text-white">{user.phone || "Not specified"}</p>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground dark:text-slate-400">Bank</Label>

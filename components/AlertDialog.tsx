@@ -19,12 +19,13 @@ export function AlertDialogDemo() {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
+          aria-label="Show alerts"
           className="border-purple-700/50 bg-purple-950/30 text-white hover:bg-purple-900/50 hover:border-purple-600 transition-all duration-300"
         >
-          <AlertCircle className="mr-2 h-4 w-4" />
-          Show Alerts
+          <AlertCircle className="h-4 w-4 sm:mr-2" aria-hidden="true" />
+          <span className="hidden sm:inline">Show Alerts</span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="max-w-3xl">

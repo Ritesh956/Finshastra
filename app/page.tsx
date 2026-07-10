@@ -63,8 +63,8 @@ export default function Home() {
             
             {/* MASSIVE FinShastra Brand Name */}
             <div className="mb-6">
-              <h1 className="text-[15rem] md:text-[30rem] lg:text-[55rem] xl:text-[70rem] font-black leading-none tracking-tighter mb-4">
-  <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-40xl">
+              <h1 className="text-6xl md:text-8xl lg:text-9xl font-black leading-none tracking-tighter mb-4">
+  <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-2xl">
     FinShastra
   </span>
 </h1>
@@ -159,7 +159,7 @@ export default function Home() {
         <div className="container mx-auto px-4 relative z-10">
           {/* Section Header */}
           <div className="text-center mb-16">
-            <h2 className="text-[16rem] md:text-[24rem] lg:text-[32rem] xl:text-[40rem] font-black mb-8 leading-none tracking-tighter">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black mb-8 leading-none tracking-tighter">
               <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent drop-shadow-2xl">
                 FEATURES
               </span>
@@ -238,7 +238,7 @@ export default function Home() {
         
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
-            <h2 className="text-[16rem] md:text-[24rem] lg:text-[32rem] xl:text-[40rem] font-black mb-8 leading-none tracking-tighter">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black mb-8 leading-none tracking-tighter">
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent drop-shadow-2xl">
                 TOOLS
               </span>

@@ -25,7 +25,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen bg-background" suppressHydrationWarning>
       {/* Enhanced Modern Navbar */}
       <header className="sticky top-0 z-50 w-full border-b border-purple-900/30 bg-gradient-to-r from-slate-950 via-purple-950/40 to-slate-950 backdrop-blur-xl shadow-lg shadow-purple-900/20">
-        <div className="container flex h-20 items-center justify-between px-6 mx-auto" suppressHydrationWarning>
+        <div className="container flex h-20 items-center justify-between px-4 sm:px-6 mx-auto gap-2" suppressHydrationWarning>
           <div className="flex items-center space-x-10" suppressHydrationWarning>
             <Link href="/" className="flex items-center space-x-3 group">
               <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 shadow-lg group-hover:shadow-2xl group-hover:shadow-purple-500/50 group-hover:scale-105 transition-all duration-300" suppressHydrationWarning>
@@ -35,7 +35,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
                 <span className="text-2xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                   FinShastra
                 </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold tracking-wide">SMART LOAN MANAGEMENT</span>
+                <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 font-semibold tracking-wide">SMART LOAN MANAGEMENT</span>
               </div>
             </Link>
             <nav className="hidden lg:flex items-center space-x-1 ml-8">

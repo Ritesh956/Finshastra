@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -8,27 +8,60 @@ generator client {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  password      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  loans         Loan[]
+  id          String   @id @default(cuid())
+  name        String
+  email       String   @unique
+  password    String
+  phone       String?
+  avatarUrl   String?
+  bank        String?
+  income      Float?
+  expenses    Float?
+  creditScore Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  loans       Loan[]
 }
 
 model Loan {
-  id                  String   @id @default(cuid())
-  userId              String
-  user                User     @relation(fields: [userId], references: [id])
-  name                String
-  amount              Float
-  interestRate        Float
-  term                Int
-  startDate           DateTime
-  nextPaymentDue      DateTime
-  outstandingBalance  Float
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name                 String
+  type                 String    @default("Personal")
+  principal            Float
+  interestRate         Float
+  termMonths           Int
+  emi                  Float
+  outstandingBalance   Float
+  totalInterestPaid    Float     @default(0)
+  startDate            DateTime  @default(now())
+  nextPaymentDue       DateTime
+  notificationsEnabled Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  payments             Payment[]
 }
 
+model Payment {
+  id        String   @id @default(cuid())
+  loanId    String
+  loan      Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  amount    Float
+  principalComponent Float @default(0)
+  interestComponent  Float @default(0)
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
+model BankOffer {
+  id            String @id @default(cuid())
+  bankName      String
+  loanType      String
+  interestRate  Float
+  maxAmount     Float
+  maxTenure     Int
+  processingFee Float
+  // JSON-encoded string array (SQLite has no native lists)
+  features      String
+}

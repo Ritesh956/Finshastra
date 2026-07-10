@@ -4,6 +4,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/ThemeProvider"
 import { AuthProvider } from "@/contexts/AuthContext"
 import { LayoutContent } from "@/components/LayoutContent"
+import { Toaster } from "@/components/ui/toaster"
 import type React from "react"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -30,6 +31,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
             <LayoutContent>{children}</LayoutContent>
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -104,22 +104,17 @@ export default function SignupPage() {
     }
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Register user via AuthContext (stores in localStorage "users")
-      const ok = signup({
+      const result = await signup({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        bank: "",
-        avatarUrl: "/placeholder.svg?height=40&width=40",
+        password: formData.password,
       })
 
-      if (ok) {
+      if (result.ok) {
         router.push("/login?registered=true")
       } else {
-        setError("Registration failed. Please try again.")
+        setError(result.error || "Registration failed. Please try again.")
       }
     } catch (err) {
       setError("An error occurred. Please try again.")
@@ -216,6 +211,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute right-3 top-3 text-slate-400 hover:text-white"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -250,6 +246,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                     className="absolute right-3 top-3 text-slate-400 hover:text-white"
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

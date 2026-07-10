@@ -15,7 +15,7 @@ import { Separator } from "@/components/ui/separator"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isAuthenticated, updateProfile, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, updateProfile, logout } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const [formData, setFormData] = useState({
@@ -26,7 +26,7 @@ export default function ProfilePage() {
   })
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoading && !isAuthenticated) {
       router.push("/login")
       return
     }
@@ -48,10 +48,10 @@ export default function ProfilePage() {
     })
   }
 
-  const handleSave = () => {
-    updateProfile(formData)
+  const handleSave = async () => {
+    const ok = await updateProfile(formData)
     setIsEditing(false)
-    setSuccessMessage("Profile updated successfully!")
+    setSuccessMessage(ok ? "Profile updated successfully!" : "Failed to update profile. Please try again.")
     setTimeout(() => setSuccessMessage(""), 3000)
   }
 
@@ -96,7 +96,7 @@ export default function ProfilePage() {
             <div className="flex flex-col items-center mb-6">
               <div className="relative">
                 <Avatar className="h-24 w-24">
-                  <AvatarImage src={user.avatarUrl} alt={user.name} />
+                  <AvatarImage src={user.avatarUrl ?? undefined} alt={user.name} />
                   <AvatarFallback className="text-2xl bg-purple-900 text-white">{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
                 <Button size="icon" variant="secondary" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-slate-800 hover:bg-slate-700">

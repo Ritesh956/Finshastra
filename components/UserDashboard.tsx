@@ -1,84 +1,70 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, CalendarIcon, TrendingUp, Bell, CreditCard, Wallet } from "lucide-react"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useCallback, useEffect, useState } from "react"
 import {
-  PieChart as RePieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
   AreaChart,
   Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
 } from "recharts"
+import {
+  Wallet,
+  TrendingUp,
+  CreditCard,
+  CalendarIcon,
+  Bell,
+  AlertCircle,
+  PlusCircle,
+  Trash2,
+  IndianRupee,
+  Loader2,
+} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Calendar } from "@/components/ui/calendar"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
+import { calculateEMI } from "@/utils/loanCalculations"
 
 interface UserLoan {
   id: string
   name: string
-  outstandingBalance: number
-  nextPaymentDue: Date
-  totalInterestPaid: number
-  isOverdue: boolean
+  type: string
+  principal: number
+  interestRate: number
+  termMonths: number
   emi: number
+  outstandingBalance: number
+  totalInterestPaid: number
+  nextPaymentDue: string
   notificationsEnabled: boolean
 }
-
-const mockUserLoans: UserLoan[] = [
-  {
-    id: "1",
-    name: "Home Loan",
-    outstandingBalance: 200000,
-    nextPaymentDue: new Date(2023, 5, 15),
-    totalInterestPaid: 15000,
-    isOverdue: false,
-    emi: 1500,
-    notificationsEnabled: true,
-  },
-  {
-    id: "2",
-    name: "Car Loan",
-    outstandingBalance: 15000,
-    nextPaymentDue: new Date(2023, 5, 1),
-    totalInterestPaid: 2000,
-    isOverdue: true,
-    emi: 500,
-    notificationsEnabled: false,
-  },
-  {
-    id: "3",
-    name: "Personal Loan",
-    outstandingBalance: 5000,
-    nextPaymentDue: new Date(2023, 5, 30),
-    totalInterestPaid: 500,
-    isOverdue: false,
-    emi: 200,
-    notificationsEnabled: true,
-  },
-]
-
-const mockPaymentHistory = [
-  { month: "Jan", amount: 2000 },
-  { month: "Feb", amount: 2200 },
-  { month: "Mar", amount: 1800 },
-  { month: "Apr", amount: 2400 },
-  { month: "May", amount: 2100 },
-  { month: "Jun", amount: 2300 },
-]
 
 interface BankLoanOffer {
   id: string
@@ -91,86 +77,206 @@ interface BankLoanOffer {
   features: string[]
 }
 
-const mockBankLoanOffers: BankLoanOffer[] = [
-  {
-    id: "1",
-    bankName: "ABC Bank",
-    loanType: "Personal Loan",
-    interestRate: 8.5,
-    maxAmount: 500000,
-    maxTenure: 60,
-    processingFee: 1,
-    features: ["No collateral required", "Flexible repayment options", "Quick approval"],
-  },
-  {
-    id: "2",
-    bankName: "XYZ Bank",
-    loanType: "Home Loan",
-    interestRate: 6.75,
-    maxAmount: 5000000,
-    maxTenure: 360,
-    processingFee: 0.5,
-    features: ["Low interest rates", "Long repayment tenure", "Property insurance included"],
-  },
-  {
-    id: "3",
-    bankName: "123 Financial",
-    loanType: "Business Loan",
-    interestRate: 10,
-    maxAmount: 1000000,
-    maxTenure: 84,
-    processingFee: 2,
-    features: ["No security required up to 30 lakhs", "Customized repayment options", "Dedicated relationship manager"],
-  },
-]
+interface PaymentHistoryPoint {
+  month: string
+  amount: number
+}
+
+const LOAN_TYPES = ["Personal", "Home", "Auto", "Education", "Business", "Gold", "Other"]
+
+const formatINR = (value: number) =>
+  value.toLocaleString("en-IN", { maximumFractionDigits: 0 })
+
+const isLoanOverdue = (loan: UserLoan) =>
+  loan.outstandingBalance > 0 && new Date(loan.nextPaymentDue).getTime() < Date.now()
 
 export function UserDashboard() {
+  const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [loans, setLoans] = useState<UserLoan[]>(mockUserLoans)
+  const [loans, setLoans] = useState<UserLoan[]>([])
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryPoint[]>([])
+  const [bankOffers, setBankOffers] = useState<BankLoanOffer[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+  const [payingLoanId, setPayingLoanId] = useState<string | null>(null)
   const [newLoan, setNewLoan] = useState({
     name: "",
-    outstandingBalance: 0,
-    emi: 0,
-    nextPaymentDue: new Date(),
+    type: "Personal",
+    principal: "",
+    interestRate: "",
+    termMonths: "",
+    nextPaymentDue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
   })
-  const [isAddingLoan, setIsAddingLoan] = useState(false)
-  const [selectedLoan, setSelectedLoan] = useState<string | null>(null)
 
-  const getDueDates = (date: Date): UserLoan[] => {
-    return loans.filter(
-      (loan) =>
-        loan.nextPaymentDue.getDate() === date.getDate() &&
-        loan.nextPaymentDue.getMonth() === date.getMonth() &&
-        loan.nextPaymentDue.getFullYear() === date.getFullYear(),
-    )
-  }
+  const loadData = useCallback(async () => {
+    setLoadError("")
+    try {
+      const [loansRes, paymentsRes, offersRes] = await Promise.all([
+        fetch("/api/loans"),
+        fetch("/api/payments"),
+        fetch("/api/bank-offers"),
+      ])
+      if (!loansRes.ok || !paymentsRes.ok || !offersRes.ok) {
+        throw new Error("Failed to load dashboard data")
+      }
+      const [loansData, paymentsData, offersData] = await Promise.all([
+        loansRes.json(),
+        paymentsRes.json(),
+        offersRes.json(),
+      ])
+      setLoans(loansData.loans)
+      setPaymentHistory(paymentsData.history)
+      setBankOffers(offersData.offers)
+    } catch {
+      setLoadError("Could not load your dashboard. Please check your connection and try again.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  const getDueDates = (date: Date): UserLoan[] =>
+    loans.filter((loan) => {
+      const due = new Date(loan.nextPaymentDue)
+      return (
+        due.getDate() === date.getDate() &&
+        due.getMonth() === date.getMonth() &&
+        due.getFullYear() === date.getFullYear()
+      )
+    })
 
   const totalOutstanding = loans.reduce((sum, loan) => sum + loan.outstandingBalance, 0)
   const totalInterestPaid = loans.reduce((sum, loan) => sum + loan.totalInterestPaid, 0)
+  const activeLoans = loans.filter((loan) => loan.outstandingBalance > 0)
+  const hasOverdue = loans.some(isLoanOverdue)
 
-  const handleAddLoan = (e: React.FormEvent) => {
+  const parsedPrincipal = Number(newLoan.principal)
+  const parsedRate = Number(newLoan.interestRate)
+  const parsedTerm = Number(newLoan.termMonths)
+  const emiPreview =
+    parsedPrincipal > 0 && parsedRate >= 0 && parsedTerm > 0
+      ? parsedRate === 0
+        ? Math.round((parsedPrincipal / parsedTerm) * 100) / 100
+        : calculateEMI(parsedPrincipal, parsedRate, parsedTerm)
+      : null
+
+  const handleAddLoan = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newLoanWithId: UserLoan = {
-      ...newLoan,
-      id: (loans.length + 1).toString(),
-      totalInterestPaid: 0,
-      isOverdue: false,
-      notificationsEnabled: true,
+    setIsSaving(true)
+    try {
+      const res = await fetch("/api/loans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newLoan.name,
+          type: newLoan.type,
+          principal: parsedPrincipal,
+          interestRate: parsedRate,
+          termMonths: parsedTerm,
+          nextPaymentDue: newLoan.nextPaymentDue,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: "Could not add loan", description: data.error, variant: "destructive" })
+        return
+      }
+      setLoans((prev) => [...prev, data.loan])
+      setNewLoan({
+        name: "",
+        type: "Personal",
+        principal: "",
+        interestRate: "",
+        termMonths: "",
+        nextPaymentDue: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+      })
+      toast({ title: "Loan added", description: `${data.loan.name} is now being tracked.` })
+    } catch {
+      toast({ title: "Network error", description: "Please try again.", variant: "destructive" })
+    } finally {
+      setIsSaving(false)
     }
-    setLoans([...loans, newLoanWithId])
-    setNewLoan({ name: "", outstandingBalance: 0, emi: 0, nextPaymentDue: new Date() })
-    setIsAddingLoan(false)
   }
 
-  const handleLoanAction = (loanId: string, action: string) => {
-    setSelectedLoan(loanId)
-    // Implement actions like view details, edit, delete, etc.
-    console.log(`${action} loan with id: ${loanId}`)
+  const handlePayEMI = async (loan: UserLoan) => {
+    setPayingLoanId(loan.id)
+    try {
+      const res = await fetch(`/api/loans/${loan.id}/payments`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) {
+        toast({ title: "Payment failed", description: data.error, variant: "destructive" })
+        return
+      }
+      setLoans((prev) => prev.map((l) => (l.id === loan.id ? data.loan : l)))
+      const paymentsRes = await fetch("/api/payments")
+      if (paymentsRes.ok) {
+        const paymentsData = await paymentsRes.json()
+        setPaymentHistory(paymentsData.history)
+      }
+      toast({
+        title: "Payment recorded",
+        description: `₹${formatINR(data.payment.amount)} paid on ${loan.name}.`,
+      })
+    } catch {
+      toast({ title: "Network error", description: "Please try again.", variant: "destructive" })
+    } finally {
+      setPayingLoanId(null)
+    }
   }
 
-  const toggleNotifications = (loanId: string) => {
-    setLoans(
-      loans.map((loan) => (loan.id === loanId ? { ...loan, notificationsEnabled: !loan.notificationsEnabled } : loan)),
+  const handleDeleteLoan = async (loan: UserLoan) => {
+    try {
+      const res = await fetch(`/api/loans/${loan.id}`, { method: "DELETE" })
+      if (!res.ok) {
+        toast({ title: "Delete failed", description: "Please try again.", variant: "destructive" })
+        return
+      }
+      setLoans((prev) => prev.filter((l) => l.id !== loan.id))
+      toast({ title: "Loan removed", description: `${loan.name} is no longer tracked.` })
+    } catch {
+      toast({ title: "Network error", description: "Please try again.", variant: "destructive" })
+    }
+  }
+
+  const toggleNotifications = async (loan: UserLoan) => {
+    const next = !loan.notificationsEnabled
+    setLoans((prev) => prev.map((l) => (l.id === loan.id ? { ...l, notificationsEnabled: next } : l)))
+    const res = await fetch(`/api/loans/${loan.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notificationsEnabled: next }),
+    })
+    if (!res.ok) {
+      setLoans((prev) => prev.map((l) => (l.id === loan.id ? { ...l, notificationsEnabled: !next } : l)))
+      toast({ title: "Could not update notifications", variant: "destructive" })
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-slate-400" role="status" aria-live="polite">
+        <Loader2 className="h-8 w-8 animate-spin mb-4" />
+        <p>Loading your loan portfolio…</p>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <Alert variant="destructive" className="my-8">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Something went wrong</AlertTitle>
+        <AlertDescription className="flex items-center gap-4">
+          {loadError}
+          <Button size="sm" variant="outline" onClick={() => { setIsLoading(true); loadData() }}>
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   }
 
@@ -180,46 +286,63 @@ export function UserDashboard() {
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-            <Wallet className="h-4 w-4 text-blue-100" />
+            <Wallet className="h-4 w-4 text-blue-100" aria-hidden="true" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalOutstanding.toFixed(2)}</div>
+            <div className="text-2xl font-bold">₹{formatINR(totalOutstanding)}</div>
             <p className="text-xs text-blue-100">Across all loans</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Interest Paid</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-100" />
+            <TrendingUp className="h-4 w-4 text-green-100" aria-hidden="true" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalInterestPaid.toFixed(2)}</div>
+            <div className="text-2xl font-bold">₹{formatINR(totalInterestPaid)}</div>
             <p className="text-xs text-green-100">Lifetime interest payments</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
-            <CreditCard className="h-4 w-4 text-purple-100" />
+            <CreditCard className="h-4 w-4 text-purple-100" aria-hidden="true" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{loans.length}</div>
+            <div className="text-2xl font-bold">{activeLoans.length}</div>
             <p className="text-xs text-purple-100">Currently active loans</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Next Payment</CardTitle>
-            <CalendarIcon className="h-4 w-4 text-yellow-100" />
+            <CalendarIcon className="h-4 w-4 text-yellow-100" aria-hidden="true" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {new Date(Math.min(...loans.map((loan) => loan.nextPaymentDue.getTime()))).toLocaleDateString()}
+              {activeLoans.length > 0
+                ? new Date(
+                    Math.min(...activeLoans.map((loan) => new Date(loan.nextPaymentDue).getTime())),
+                  ).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+                : "—"}
             </div>
-            <p className="text-xs text-yellow-100">Upcoming payment due</p>
+            <p className="text-xs text-yellow-100">
+              {activeLoans.length > 0 ? "Upcoming payment due" : "No active loans"}
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      {hasOverdue && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Overdue Payments</AlertTitle>
+          <AlertDescription>
+            You have overdue payments on one or more loans. Please make the payments as soon as possible to avoid
+            additional charges.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-slate-900/50 border-slate-700">
@@ -227,53 +350,97 @@ export function UserDashboard() {
             <CardTitle className="text-white">Loan Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-8">
-              {loans.map((loan) => (
-                <div key={loan.id} className="flex flex-col sm:flex-row sm:items-center">
-                  <div className="space-y-1 flex-1">
-                    <div className="text-sm font-medium leading-none">
-                      {loan.name}
-                      {loan.isOverdue && (
-                        <Badge variant="destructive" className="ml-2">
-                          Overdue
+            {loans.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <IndianRupee className="h-10 w-10 text-slate-600 mb-3" aria-hidden="true" />
+                <p className="text-slate-300 font-medium">No loans yet</p>
+                <p className="text-sm text-slate-500 mt-1">
+                  Add your first loan below to start tracking EMIs, payments, and progress.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {loans.map((loan) => (
+                  <div key={loan.id} className="flex flex-col sm:flex-row sm:items-center">
+                    <div className="space-y-1 flex-1">
+                      <div className="text-sm font-medium leading-none text-white">
+                        {loan.name}
+                        <Badge variant="outline" className="ml-2 text-slate-400 border-slate-600">
+                          {loan.type}
                         </Badge>
-                      )}
+                        {isLoanOverdue(loan) && (
+                          <Badge variant="destructive" className="ml-2">
+                            Overdue
+                          </Badge>
+                        )}
+                        {loan.outstandingBalance === 0 && (
+                          <Badge className="ml-2 bg-green-600 hover:bg-green-600">Paid off</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-400">
+                        EMI ₹{formatINR(loan.emi)} · Next payment:{" "}
+                        {new Date(loan.nextPaymentDue).toLocaleDateString("en-IN")}
+                      </p>
                     </div>
-                    <p className="text-sm text-slate-400">
-                      Next payment: {loan.nextPaymentDue.toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between sm:justify-end mt-2 sm:mt-0">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <div className="font-medium cursor-help mr-4 text-white">${loan.outstandingBalance.toFixed(2)}</div>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Outstanding balance</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id={`notifications-${loan.id}`}
-                        checked={loan.notificationsEnabled}
-                        onCheckedChange={() => toggleNotifications(loan.id)}
-                      />
-                      <Label htmlFor={`notifications-${loan.id}`}>
-                        <Bell className="h-4 w-4" />
-                      </Label>
-                      <Button size="sm" onClick={() => handleLoanAction(loan.id, "view")}>
-                        View
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleLoanAction(loan.id, "edit")}>
-                        Edit
-                      </Button>
+                    <div className="flex items-center justify-between sm:justify-end mt-2 sm:mt-0 gap-2 flex-wrap">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="font-medium cursor-help mr-2 text-white">
+                              ₹{formatINR(loan.outstandingBalance)}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Outstanding balance</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`notifications-${loan.id}`}
+                          checked={loan.notificationsEnabled}
+                          onCheckedChange={() => toggleNotifications(loan)}
+                          aria-label={`Toggle EMI reminders for ${loan.name}`}
+                        />
+                        <Label htmlFor={`notifications-${loan.id}`}>
+                          <Bell className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                        </Label>
+                        <Button
+                          size="sm"
+                          onClick={() => handlePayEMI(loan)}
+                          disabled={payingLoanId === loan.id || loan.outstandingBalance === 0}
+                        >
+                          {payingLoanId === loan.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          ) : (
+                            "Pay EMI"
+                          )}
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" aria-label={`Delete ${loan.name}`}>
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete {loan.name}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This removes the loan and its payment history permanently. This cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteLoan(loan)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -282,23 +449,31 @@ export function UserDashboard() {
             <CardTitle className="text-white">Payment History</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={mockPaymentHistory}>
-                  <defs>
-                    <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <RechartsTooltip />
-                  <Area type="monotone" dataKey="amount" stroke="#8884d8" fillOpacity={1} fill="url(#colorAmount)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            {paymentHistory.every((p) => p.amount === 0) ? (
+              <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                <TrendingUp className="h-10 w-10 text-slate-600 mb-3" aria-hidden="true" />
+                <p className="text-slate-300 font-medium">No payments recorded yet</p>
+                <p className="text-sm text-slate-500 mt-1">Use "Pay EMI" on a loan to log your first payment.</p>
+              </div>
+            ) : (
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={paymentHistory}>
+                    <defs>
+                      <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <RechartsTooltip formatter={(value: number) => [`₹${formatINR(value)}`, "Paid"]} />
+                    <Area type="monotone" dataKey="amount" stroke="#8884d8" fillOpacity={1} fill="url(#colorAmount)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -310,58 +485,109 @@ export function UserDashboard() {
         <CardContent>
           <Tabs defaultValue="add-loan" className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-slate-800">
-              <TabsTrigger value="add-loan" className="data-[state=active]:bg-slate-700">Add New Loan</TabsTrigger>
-              <TabsTrigger value="repayment-schedule" className="data-[state=active]:bg-slate-700">Repayment Schedule</TabsTrigger>
+              <TabsTrigger value="add-loan" className="data-[state=active]:bg-slate-700">
+                <PlusCircle className="h-4 w-4 mr-2" aria-hidden="true" />
+                Add New Loan
+              </TabsTrigger>
+              <TabsTrigger value="repayment-schedule" className="data-[state=active]:bg-slate-700">
+                Repayment Schedule
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="add-loan">
-              {isAddingLoan && (
-                <form onSubmit={handleAddLoan} className="space-y-4 mt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="loanName">Loan Name</Label>
-                      <Input
-                        id="loanName"
-                        value={newLoan.name}
-                        onChange={(e) => setNewLoan({ ...newLoan, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="outstandingBalance">Outstanding Balance</Label>
-                      <Input
-                        id="outstandingBalance"
-                        type="number"
-                        value={newLoan.outstandingBalance}
-                        onChange={(e) => setNewLoan({ ...newLoan, outstandingBalance: Number(e.target.value) })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="emi">EMI</Label>
-                      <Input
-                        id="emi"
-                        type="number"
-                        value={newLoan.emi}
-                        onChange={(e) => setNewLoan({ ...newLoan, emi: Number(e.target.value) })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="nextPaymentDue">Next Payment Due</Label>
-                      <Input
-                        id="nextPaymentDue"
-                        type="date"
-                        value={newLoan.nextPaymentDue.toISOString().split("T")[0]}
-                        onChange={(e) => setNewLoan({ ...newLoan, nextPaymentDue: new Date(e.target.value) })}
-                        required
-                      />
-                    </div>
+              <form onSubmit={handleAddLoan} className="space-y-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="loanName">Loan Name</Label>
+                    <Input
+                      id="loanName"
+                      placeholder="e.g. Home Loan — HDFC"
+                      value={newLoan.name}
+                      onChange={(e) => setNewLoan({ ...newLoan, name: e.target.value })}
+                      required
+                    />
                   </div>
-                  <Button type="submit" className="w-full">
-                    Save Loan
-                  </Button>
-                </form>
-              )}
+                  <div className="space-y-2">
+                    <Label htmlFor="loanType">Loan Type</Label>
+                    <Select value={newLoan.type} onValueChange={(v) => setNewLoan({ ...newLoan, type: v })}>
+                      <SelectTrigger id="loanType">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LOAN_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="principal">Loan Amount (₹)</Label>
+                    <Input
+                      id="principal"
+                      type="number"
+                      min="1"
+                      step="any"
+                      placeholder="500000"
+                      value={newLoan.principal}
+                      onChange={(e) => setNewLoan({ ...newLoan, principal: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="interestRate">Interest Rate (% p.a.)</Label>
+                    <Input
+                      id="interestRate"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      placeholder="8.5"
+                      value={newLoan.interestRate}
+                      onChange={(e) => setNewLoan({ ...newLoan, interestRate: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="termMonths">Term (months)</Label>
+                    <Input
+                      id="termMonths"
+                      type="number"
+                      min="1"
+                      max="600"
+                      placeholder="60"
+                      value={newLoan.termMonths}
+                      onChange={(e) => setNewLoan({ ...newLoan, termMonths: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nextPaymentDue">First Payment Due</Label>
+                    <Input
+                      id="nextPaymentDue"
+                      type="date"
+                      value={newLoan.nextPaymentDue}
+                      onChange={(e) => setNewLoan({ ...newLoan, nextPaymentDue: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                {emiPreview !== null && (
+                  <p className="text-sm text-slate-400">
+                    Estimated EMI: <span className="text-white font-medium">₹{formatINR(emiPreview)}</span> / month
+                  </p>
+                )}
+                <Button type="submit" className="w-full" disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                      Saving…
+                    </>
+                  ) : (
+                    "Save Loan"
+                  )}
+                </Button>
+              </form>
             </TabsContent>
             <TabsContent value="repayment-schedule">
               <div className="mt-4 space-y-4">
@@ -373,11 +599,13 @@ export function UserDashboard() {
                     className="rounded-md border mx-auto"
                   />
                   <div>
-                    <h3 className="text-lg font-semibold mb-2 text-white">Payments due on {selectedDate?.toLocaleDateString()}</h3>
+                    <h3 className="text-lg font-semibold mb-2 text-white">
+                      Payments due on {selectedDate?.toLocaleDateString("en-IN")}
+                    </h3>
                     {getDueDates(selectedDate || new Date()).map((loan) => (
                       <div key={loan.id} className="mb-2 flex justify-between items-center text-white">
                         <span>{loan.name}</span>
-                        <span className="font-medium">${loan.emi.toFixed(2)}</span>
+                        <span className="font-medium">₹{formatINR(loan.emi)}</span>
                       </div>
                     ))}
                     {getDueDates(selectedDate || new Date()).length === 0 && (
@@ -391,111 +619,109 @@ export function UserDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-slate-900/50 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Loan Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RePieChart>
-                  <Pie
-                    data={loans}
-                    dataKey="outstandingBalance"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius="80%"
-                    fill="#8884d8"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {loans.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 60%)`} />
-                    ))}
-                  </Pie>
-                </RePieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      {loans.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="bg-slate-900/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">Loan Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RePieChart>
+                    <Pie
+                      data={activeLoans}
+                      dataKey="outstandingBalance"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius="80%"
+                      fill="#8884d8"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {activeLoans.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 60%)`} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip formatter={(value: number) => [`₹${formatINR(value)}`, "Outstanding"]} />
+                  </RePieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card className="bg-slate-900/50 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white">Loan Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              {loans.map((loan) => {
-                const totalLoanAmount = loan.outstandingBalance + loan.totalInterestPaid
-                const progress = (loan.totalInterestPaid / totalLoanAmount) * 100
-                return (
-                  <div key={loan.id} className="space-y-2">
-                    <div className="flex justify-between text-sm text-white">
-                      <span>{loan.name}</span>
-                      <span>{progress.toFixed(0)}% paid</span>
+          <Card className="bg-slate-900/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white">Loan Progress</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-8">
+                {loans.map((loan) => {
+                  const paidPrincipal = Math.max(0, loan.principal - loan.outstandingBalance)
+                  const progress = loan.principal > 0 ? (paidPrincipal / loan.principal) * 100 : 0
+                  return (
+                    <div key={loan.id} className="space-y-2">
+                      <div className="flex justify-between text-sm text-white">
+                        <span>{loan.name}</span>
+                        <span>{progress.toFixed(0)}% repaid</span>
+                      </div>
+                      <Progress
+                        value={progress}
+                        className="h-2"
+                        aria-label={`${loan.name} repayment progress: ${progress.toFixed(0)}%`}
+                      />
                     </div>
-                    <Progress value={progress} className="h-2" />
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {loans.some((loan) => loan.isOverdue) && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Overdue Payments</AlertTitle>
-          <AlertDescription>
-            You have overdue payments on one or more loans. Please make the payments as soon as possible to avoid
-            additional charges.
-          </AlertDescription>
-        </Alert>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
+
       <Card className="bg-slate-900/50 border-slate-700">
         <CardHeader>
           <CardTitle className="text-white">Bank Loan Offers</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Bank</TableHead>
-                <TableHead>Loan Type</TableHead>
-                <TableHead>Interest Rate</TableHead>
-                <TableHead>Max Amount</TableHead>
-                <TableHead>Max Tenure</TableHead>
-                <TableHead>Processing Fee</TableHead>
-                <TableHead>Features</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockBankLoanOffers.map((offer) => (
-                <TableRow key={offer.id} className="text-slate-300">
-                  <TableCell className="text-white font-medium">{offer.bankName}</TableCell>
-                  <TableCell>{offer.loanType}</TableCell>
-                  <TableCell>{offer.interestRate}%</TableCell>
-                  <TableCell>${offer.maxAmount.toLocaleString()}</TableCell>
-                  <TableCell>{offer.maxTenure} months</TableCell>
-                  <TableCell>{offer.processingFee}%</TableCell>
-                  <TableCell>
-                    <ul className="list-disc list-inside">
-                      {offer.features.map((feature, index) => (
-                        <li key={index} className="text-sm">
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Bank</TableHead>
+                  <TableHead>Loan Type</TableHead>
+                  <TableHead>Interest Rate</TableHead>
+                  <TableHead>Max Amount</TableHead>
+                  <TableHead>Max Tenure</TableHead>
+                  <TableHead>Processing Fee</TableHead>
+                  <TableHead>Features</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {bankOffers.map((offer) => (
+                  <TableRow key={offer.id} className="text-slate-300">
+                    <TableCell className="text-white font-medium">{offer.bankName}</TableCell>
+                    <TableCell>{offer.loanType}</TableCell>
+                    <TableCell>{offer.interestRate}%</TableCell>
+                    <TableCell>₹{formatINR(offer.maxAmount)}</TableCell>
+                    <TableCell>{offer.maxTenure} months</TableCell>
+                    <TableCell>{offer.processingFee}%</TableCell>
+                    <TableCell>
+                      <ul className="list-disc list-inside">
+                        {offer.features.map((feature, index) => (
+                          <li key={index} className="text-sm">
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
   )
 }
-

@@ -1,113 +1,141 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from "react"
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
+import { SessionProvider, useSession, signIn, signOut } from "next-auth/react"
 
-interface User {
+export interface User {
   id: string
   name: string
   email: string
-  phone: string
-  avatarUrl?: string
-  bank?: string
+  phone?: string | null
+  avatarUrl?: string | null
+  bank?: string | null
+  income?: number | null
+  expenses?: number | null
+  creditScore?: number | null
   createdAt: string
+}
+
+interface SignupData {
+  name: string
+  email: string
+  phone?: string
+  password: string
 }
 
 interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => boolean
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => void
-  signup: (userData: Omit<User, "id" | "createdAt">) => boolean
-  updateProfile: (userData: Partial<User>) => void
+  signup: (userData: SignupData) => Promise<{ ok: boolean; error?: string }>
+  updateProfile: (userData: Partial<User>) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+function AuthContextInner({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession()
   const [user, setUser] = useState<User | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    // Check if user is logged in on mount
-    const storedUser = localStorage.getItem("currentUser")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-      setIsAuthenticated(true)
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await fetch("/api/user/me")
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data.user)
+      } else {
+        setUser(null)
+      }
+    } catch {
+      setUser(null)
     }
   }, [])
 
-  const login = (email: string, password: string): boolean => {
-    // Mock authentication - replace with real API call
-    // For demo purposes, we'll check if user exists in localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]")
-    const foundUser = users.find((u: any) => u.email === email)
-
-    if (foundUser) {
-      setUser(foundUser)
-      setIsAuthenticated(true)
-      localStorage.setItem("currentUser", JSON.stringify(foundUser))
-      return true
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchProfile()
+    } else if (status === "unauthenticated") {
+      setUser(null)
     }
+  }, [status, fetchProfile])
 
-    // For demo: allow any email/password combination
-    const demoUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: email.split("@")[0],
-      email: email,
-      phone: "+1 (555) 123-4567",
-      createdAt: new Date().toISOString(),
-      avatarUrl: "/placeholder.svg?height=40&width=40",
-    }
-    setUser(demoUser)
-    setIsAuthenticated(true)
-    localStorage.setItem("currentUser", JSON.stringify(demoUser))
-    return true
+  const login = async (email: string, password: string): Promise<boolean> => {
+    const result = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    })
+    return result?.ok ?? false
   }
 
   const logout = () => {
-    setUser(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem("currentUser")
-    router.push("/login")
+    signOut({ redirect: false }).then(() => {
+      setUser(null)
+      router.push("/login")
+    })
   }
 
-  const signup = (userData: Omit<User, "id" | "createdAt">): boolean => {
-    const newUser: User = {
-      ...userData,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-    }
-
-    // Store in localStorage (replace with real API call)
-    const users = JSON.parse(localStorage.getItem("users") || "[]")
-    users.push(newUser)
-    localStorage.setItem("users", JSON.stringify(users))
-
-    return true
-  }
-
-  const updateProfile = (userData: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...userData }
-      setUser(updatedUser)
-      localStorage.setItem("currentUser", JSON.stringify(updatedUser))
-
-      // Update in users array
-      const users = JSON.parse(localStorage.getItem("users") || "[]")
-      const userIndex = users.findIndex((u: User) => u.id === user.id)
-      if (userIndex !== -1) {
-        users[userIndex] = updatedUser
-        localStorage.setItem("users", JSON.stringify(users))
+  const signup = async (userData: SignupData): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      })
+      if (res.ok) {
+        return { ok: true }
       }
+      const data = await res.json().catch(() => ({}))
+      return { ok: false, error: data.error || "Registration failed. Please try again." }
+    } catch {
+      return { ok: false, error: "Network error. Please try again." }
+    }
+  }
+
+  const updateProfile = async (userData: Partial<User>): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/user/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUser(data.user)
+        return true
+      }
+      return false
+    } catch {
+      return false
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout, signup, updateProfile }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: status === "authenticated",
+        isLoading: status === "loading",
+        login,
+        logout,
+        signup,
+        updateProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
+  )
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthContextInner>{children}</AuthContextInner>
+    </SessionProvider>
   )
 }
 

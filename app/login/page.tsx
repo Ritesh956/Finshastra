@@ -39,14 +39,11 @@ export default function LoginPage() {
     }
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      
-      // Mock authentication - replace with real API call
-      const success = login(email, password)
-      
+      const success = await login(email, password)
+
       if (success) {
         router.push("/dashboard")
+        router.refresh()
       } else {
         setError("Invalid email or password")
       }
@@ -118,6 +115,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute right-3 top-3 text-slate-400 hover:text-white"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
