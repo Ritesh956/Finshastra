@@ -107,12 +107,16 @@ npx tsc --noEmit  # typecheck (also enforced during `next build`)
 
 ## Deployment
 
-The app uses Neon Postgres, so data persists across deploys. On the hosting side (Netlify):
+Live at **[finshastra.vercel.app](https://finshastra.vercel.app)** — Vercel (GitHub-linked, auto-deploys on push to `main`) + Neon Postgres, so data persists across deploys.
 
-1. Set `DATABASE_URL` under Site settings → Environment variables — use the **pooled** Neon connection string (host contains `-pooler`); serverless functions need PgBouncer. Locally, `.env` should use the **direct** host instead, since `prisma migrate` doesn't work through the pooler.
-2. Set `NEXTAUTH_URL` to the deployed URL and a strong `NEXTAUTH_SECRET`.
-3. Optional integrations: `ANTHROPIC_API_KEY` (AI chat), `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway), `SMTP_*` (emails), `CRON_SECRET` + a scheduled job hitting `POST /api/reminders/run` (reminders).
-4. Trigger a redeploy. For future schema changes, run `npx prisma migrate deploy` against the database (or locally with the direct URL).
+Environment variables (Vercel → Project → Settings → Environment Variables):
+
+1. `DATABASE_URL` — the **pooled** Neon connection string (host contains `-pooler`); serverless needs PgBouncer. Locally, `.env` uses the **direct** host instead, since `prisma migrate` doesn't work through the pooler.
+2. `NEXTAUTH_SECRET` (strong random) and `NEXTAUTH_URL` (the deployed URL).
+3. `CRON_SECRET` — auths the daily reminder cron defined in `vercel.json` (Vercel sends it automatically as a Bearer token).
+4. Optional: `ANTHROPIC_API_KEY` (AI chat), `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway), `SMTP_*` (emails).
+
+For future schema changes, run `npx prisma migrate deploy` against the database (or `npx prisma migrate dev` locally with the direct URL).
 
 ---
 
