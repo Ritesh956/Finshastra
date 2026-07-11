@@ -26,7 +26,15 @@ export function AIChatbot() {
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  // Timestamps render only after mount: Node and the browser format
+  // toLocaleTimeString differently ("10:35 pm" vs "10:35 PM"), which
+  // otherwise causes a hydration mismatch on the SSR'd greeting message.
+  const [mounted, setMounted] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages arrive
@@ -101,8 +109,10 @@ export function AIChatbot() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-6">
-        <Tabs defaultValue="chat" className="flex-1 flex flex-col">
+      {/* min-h-0 at every flex level: without it, flex children won't shrink below
+          their content height, so long chat replies blow the card open instead of scrolling */}
+      <CardContent className="flex-1 flex flex-col p-6 min-h-0">
+        <Tabs defaultValue="chat" className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-3 bg-slate-800">
             <TabsTrigger value="chat" className="data-[state=active]:bg-slate-700">
               <MessageSquare className="w-4 h-4 mr-2" />
@@ -118,7 +128,7 @@ export function AIChatbot() {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="chat" className="flex-1 flex flex-col mt-4 space-y-4">
+          <TabsContent value="chat" className="flex-1 flex flex-col mt-4 space-y-4 min-h-0">
             {messages.length === 1 && (
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {quickQuestions.map((question, idx) => (
@@ -135,7 +145,7 @@ export function AIChatbot() {
               </div>
             )}
             
-            <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
+            <ScrollArea className="flex-1 min-h-0 pr-4" ref={scrollAreaRef}>
               <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -162,7 +172,9 @@ export function AIChatbot() {
                           <div className="text-sm whitespace-pre-line leading-relaxed font-medium">{message.content}</div>
                         </div>
                         <span className="text-xs text-slate-500 px-2">
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {mounted
+                            ? message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                            : " "}
                         </span>
                       </div>
                     </div>
@@ -206,7 +218,7 @@ export function AIChatbot() {
             </form>
           </TabsContent>
           
-          <TabsContent value="history" className="flex-1 mt-4">
+          <TabsContent value="history" className="flex-1 mt-4 min-h-0">
             <ScrollArea className="h-full">
               <div className="space-y-3">
                 <h3 className="font-semibold mb-4 dark:text-white text-lg">Quick Topics</h3>
