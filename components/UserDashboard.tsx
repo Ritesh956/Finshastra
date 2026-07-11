@@ -50,7 +50,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/AuthContext"
 import { calculateEMI } from "@/utils/loanCalculations"
+import { PayEMIDialog } from "./PayEMIDialog"
+import { ExportStatementButton } from "./ExportStatementButton"
 
 interface UserLoan {
   id: string
@@ -92,6 +95,7 @@ const isLoanOverdue = (loan: UserLoan) =>
 
 export function UserDashboard() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [loans, setLoans] = useState<UserLoan[]>([])
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryPoint[]>([])
@@ -99,7 +103,6 @@ export function UserDashboard() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
-  const [payingLoanId, setPayingLoanId] = useState<string | null>(null)
   const [newLoan, setNewLoan] = useState({
     name: "",
     type: "Personal",
@@ -202,30 +205,17 @@ export function UserDashboard() {
     }
   }
 
-  const handlePayEMI = async (loan: UserLoan) => {
-    setPayingLoanId(loan.id)
-    try {
-      const res = await fetch(`/api/loans/${loan.id}/payments`, { method: "POST" })
-      const data = await res.json()
-      if (!res.ok) {
-        toast({ title: "Payment failed", description: data.error, variant: "destructive" })
-        return
-      }
-      setLoans((prev) => prev.map((l) => (l.id === loan.id ? data.loan : l)))
-      const paymentsRes = await fetch("/api/payments")
-      if (paymentsRes.ok) {
-        const paymentsData = await paymentsRes.json()
-        setPaymentHistory(paymentsData.history)
-      }
-      toast({
-        title: "Payment recorded",
-        description: `₹${formatINR(data.payment.amount)} paid on ${loan.name}.`,
-      })
-    } catch {
-      toast({ title: "Network error", description: "Please try again.", variant: "destructive" })
-    } finally {
-      setPayingLoanId(null)
+  const handlePaid = async (loanId: string, updatedLoan: UserLoan, payment: { amount: number }) => {
+    setLoans((prev) => prev.map((l) => (l.id === loanId ? updatedLoan : l)))
+    const paymentsRes = await fetch("/api/payments")
+    if (paymentsRes.ok) {
+      const paymentsData = await paymentsRes.json()
+      setPaymentHistory(paymentsData.history)
     }
+    toast({
+      title: "Payment recorded",
+      description: `₹${formatINR(payment.amount)} paid on ${loans.find((l) => l.id === loanId)?.name ?? "loan"}.`,
+    })
   }
 
   const handleDeleteLoan = async (loan: UserLoan) => {
@@ -282,6 +272,11 @@ export function UserDashboard() {
 
   return (
     <div className="space-y-6">
+      {loans.length > 0 && (
+        <div className="flex justify-end">
+          <ExportStatementButton loans={loans} userName={user?.name ?? "FinShastra user"} />
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -405,17 +400,13 @@ export function UserDashboard() {
                         <Label htmlFor={`notifications-${loan.id}`}>
                           <Bell className="h-4 w-4 text-slate-400" aria-hidden="true" />
                         </Label>
-                        <Button
-                          size="sm"
-                          onClick={() => handlePayEMI(loan)}
-                          disabled={payingLoanId === loan.id || loan.outstandingBalance === 0}
-                        >
-                          {payingLoanId === loan.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                          ) : (
-                            "Pay EMI"
-                          )}
-                        </Button>
+                        <PayEMIDialog
+                          loanId={loan.id}
+                          loanName={loan.name}
+                          emi={loan.emi}
+                          disabled={loan.outstandingBalance === 0}
+                          onPaid={(updatedLoan, payment) => handlePaid(loan.id, updatedLoan as UserLoan, payment)}
+                        />
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="outline" aria-label={`Delete ${loan.name}`}>
@@ -577,7 +568,7 @@ export function UserDashboard() {
                     Estimated EMI: <span className="text-white font-medium">₹{formatINR(emiPreview)}</span> / month
                   </p>
                 )}
-                <Button type="submit" className="w-full" disabled={isSaving}>
+                <Button type="submit" variant="gradient" className="w-full" disabled={isSaving}>
                   {isSaving ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />

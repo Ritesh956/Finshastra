@@ -1,50 +1,48 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Bell, BellOff } from "lucide-react"
+import { Bell, BellOff, Loader2, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { toast } from "@/components/ui/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { useAuth } from "@/contexts/AuthContext"
 
-interface Notification {
+interface UserLoan {
   id: string
-  loanName: string
-  amount: number
-  dueDate: Date
+  name: string
+  emi: number
+  outstandingBalance: number
+  nextPaymentDue: string
+  notificationsEnabled: boolean
 }
 
-export function EMINotificationSystem({ loans }: { loans: any[] }) {
-  const [notifications, setNotifications] = useState<Notification[]>([])
+const formatINR = (value: number) => value.toLocaleString("en-IN", { maximumFractionDigits: 0 })
+
+export function EMINotificationSystem() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const [loans, setLoans] = useState<UserLoan[]>([])
+  const [dismissed, setDismissed] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Generate notifications based on loans
-    const newNotifications = loans
-      .filter((loan) => loan.notificationsEnabled)
-      .map((loan) => ({
-        id: loan.id,
-        loanName: loan.name,
-        amount: loan.emi,
-        dueDate: loan.nextPaymentDue,
-      }))
-    setNotifications(newNotifications)
-  }, [loans])
+    if (authLoading) return
+    if (!isAuthenticated) {
+      setIsLoading(false)
+      return
+    }
+    fetch("/api/loans")
+      .then((res) => (res.ok ? res.json() : { loans: [] }))
+      .then((data) => setLoans(data.loans))
+      .catch(() => setLoans([]))
+      .finally(() => setIsLoading(false))
+  }, [isAuthenticated, authLoading])
 
-  const dismissNotification = (id: string) => {
-    setNotifications(notifications.filter((notification) => notification.id !== id))
-  }
+  const notifications = loans.filter(
+    (loan) => loan.notificationsEnabled && loan.outstandingBalance > 0 && !dismissed.includes(loan.id),
+  )
 
-  const sendNotification = (notification: Notification) => {
-    toast({
-      title: `EMI Reminder: ${notification.loanName}`,
-      description: `Your EMI of $${notification.amount.toFixed(2)} is due on ${notification.dueDate.toLocaleDateString()}`,
-    })
-    console.log(`Notification sent for loan: ${notification.loanName}`)
-  }
-
-  const handlePayNow = (notification: Notification) => {
-    // Implement logic to process the payment
-    console.log(`Processing payment for loan: ${notification.loanName}`)
-  }
+  const isOverdue = (loan: UserLoan) => new Date(loan.nextPaymentDue).getTime() < Date.now()
 
   return (
     <Card className="bg-transparent border-none shadow-none">
@@ -61,30 +59,59 @@ export function EMINotificationSystem({ loans }: { loans: any[] }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        {notifications.length === 0 ? (
-          <p className="text-slate-400">No upcoming EMI notifications.</p>
+      <CardContent className="pt-6">
+        {authLoading || isLoading ? (
+          <div className="flex items-center justify-center py-10 text-slate-400">
+            <Loader2 className="h-6 w-6 animate-spin mr-2" />
+            Loading your reminders…
+          </div>
+        ) : !isAuthenticated ? (
+          <div className="flex flex-col items-center py-10 text-center">
+            <Bell className="h-10 w-10 text-slate-600 mb-3" />
+            <p className="text-slate-300 font-medium">Log in to see your EMI reminders</p>
+            <p className="text-sm text-slate-500 mt-1 mb-4">
+              Reminders are built from your real loans and their due dates.
+            </p>
+            <Button variant="gradient" asChild>
+              <Link href="/login">Login</Link>
+            </Button>
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="flex flex-col items-center py-10 text-center">
+            <CheckCircle2 className="h-10 w-10 text-green-500 mb-3" />
+            <p className="text-slate-300 font-medium">No upcoming EMI notifications</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Add a loan on the dashboard and enable its reminder toggle to see notifications here.
+            </p>
+          </div>
         ) : (
           <ul className="space-y-4">
-            {notifications.map((notification) => (
-              <li key={notification.id} className="flex items-center justify-between">
+            {notifications.map((loan) => (
+              <li
+                key={loan.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-slate-700 bg-slate-900/50 p-4"
+              >
                 <div>
-                  <p className="font-medium text-white">{notification.loanName}</p>
+                  <p className="font-medium text-white flex items-center gap-2">
+                    {loan.name}
+                    {isOverdue(loan) && <Badge variant="destructive">Overdue</Badge>}
+                  </p>
                   <p className="text-sm text-slate-400">
-                    Due: {notification.dueDate.toLocaleDateString()} - ${notification.amount.toFixed(2)}
+                    ₹{formatINR(loan.emi)} due on{" "}
+                    {new Date(loan.nextPaymentDue).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
                   </p>
                 </div>
                 <div className="flex space-x-2">
-                  <Button size="sm" onClick={() => sendNotification(notification)}>
-                    <Bell className="h-4 w-4 mr-2" />
-                    Remind
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => dismissNotification(notification.id)}>
+                  <Button size="sm" variant="outline" onClick={() => setDismissed((prev) => [...prev, loan.id])}>
                     <BellOff className="h-4 w-4 mr-2" />
                     Dismiss
                   </Button>
-                  <Button size="sm" variant="default" onClick={() => handlePayNow(notification)}>
-                    Pay Now
+                  <Button size="sm" variant="gradient" asChild>
+                    <Link href="/dashboard">Pay Now</Link>
                   </Button>
                 </div>
               </li>
@@ -95,4 +122,3 @@ export function EMINotificationSystem({ loans }: { loans: any[] }) {
     </Card>
   )
 }
-

@@ -2,7 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Loan } from "@/utils/mockData"
 import { calculateEMI, calculateTotalRepayment } from "@/utils/loanCalculations"
 import { Badge } from "@/components/ui/badge"
-import { Check, TrendingDown, Calendar, DollarSign, Percent } from "lucide-react"
+import { Check, TrendingDown, Calendar, IndianRupee, Percent } from "lucide-react"
+
+const formatINR = (value: number) => value.toLocaleString("en-IN", { maximumFractionDigits: 0 })
 
 interface LoanCardProps {
   loan: Loan
@@ -25,7 +27,7 @@ export function LoanCard({ loan, amount }: LoanCardProps) {
         <div className="flex justify-between items-start mb-2">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
-              <DollarSign className="w-6 h-6 text-white" />
+              <IndianRupee className="w-6 h-6 text-white" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -71,12 +73,12 @@ export function LoanCard({ loan, amount }: LoanCardProps) {
 
           <div className="group/stat relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-950 to-green-900/50 p-4 border border-green-800/50 hover:shadow-lg transition-all duration-300">
             <div className="flex items-start justify-between mb-2">
-              <DollarSign className="w-5 h-5 text-green-400" />
+              <IndianRupee className="w-5 h-5 text-green-400" />
             </div>
             <div className="space-y-1">
               <span className="text-xs font-medium text-green-400">Monthly EMI</span>
               <span className="text-2xl font-bold block bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-                ₹{emi.toFixed(0)}
+                ₹{formatINR(emi)}
               </span>
             </div>
           </div>

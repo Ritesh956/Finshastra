@@ -21,11 +21,16 @@ A full-stack loan-management platform built with Next.js 14. Track loans with re
 - **EMI notifications toggle** — per-loan setting persisted to the database
 - Loan comparison tool, repayment simulator, payment calendar, dark theme, responsive layout
 
+- **Payment gateway** — Razorpay checkout (test mode) when keys are configured; a built-in simulated checkout otherwise, with server-side signature verification and gateway ids stored per payment
+- **Real alerts** — `/api/alerts` derives overdue/upcoming EMIs, near-payoff notices, and cheaper refinance offers from your actual portfolio
+- **EMI reminder emails** — `/api/reminders/run` emails users whose EMIs are due within 3 days (SMTP when configured, console log otherwise); cron-able via `CRON_SECRET`
+- **Password reset** — token-based flow (hashed, single-use, 1-hour expiry) with email delivery
+- **PDF statements** — export your full portfolio + payment history from the dashboard
+
 ### Honest limitations
-- No payment gateway — "Pay EMI" records a payment, it doesn't move money
-- No email/SMS delivery for notifications (the per-loan preference is stored, delivery is not implemented)
-- Password reset UI exists but doesn't send emails
-- SQLite is for development; swap `DATABASE_URL` to Postgres for production
+- Payments don't move real money — Razorpay runs in test mode, and the fallback checkout is simulated
+- No SMS delivery (email only)
+- SQLite is for development; swap `DATABASE_URL` to Postgres for production (see Deployment below)
 
 ## Getting Started
 
@@ -85,14 +90,31 @@ npx tsc --noEmit  # typecheck (also enforced during `next build`)
 | `/api/payments` | GET | Payment history + monthly chart aggregates |
 | `/api/bank-offers` | GET | Seeded bank loan offers |
 | `/api/chat` | POST | AI assistant (Claude or knowledge-base fallback) |
+| `/api/loans/[id]/payments/order` | POST | Create a gateway order (Razorpay or simulated) |
+| `/api/alerts` | GET | Real alerts from your loan portfolio |
+| `/api/reminders/run` | POST | Send due-EMI reminder emails (session or `CRON_SECRET`) |
+| `/api/auth/forgot-password` | POST | Issue password-reset token + email |
+| `/api/auth/reset-password` | POST | Set new password with valid token |
 
 ## Roadmap
 
-- [ ] Payment gateway integration (Razorpay/Stripe)
-- [ ] Email/SMS EMI reminders (the toggle already persists per loan)
-- [ ] Real password reset flow
-- [ ] PDF statement export
-- [ ] Postgres + deployment config
+- [x] Payment gateway integration (Razorpay test mode + simulated fallback)
+- [x] Email EMI reminders (SMTP or console fallback; cron-able endpoint)
+- [x] Real password reset flow
+- [x] PDF statement export
+- [ ] SMS reminders
+- [ ] Postgres + deployment (see below)
+
+## Deployment (Postgres)
+
+The app runs on SQLite locally. To deploy:
+
+1. Provision Postgres (Neon/Supabase/Railway) and set `DATABASE_URL` to its connection string.
+2. In `prisma/schema.prisma`, change `provider = "sqlite"` to `provider = "postgresql"`.
+3. Delete `prisma/migrations/` (they are SQLite-specific) and run `npx prisma migrate dev --name init` once against the new database, then `npx prisma migrate deploy` in CI/production.
+4. Set `NEXTAUTH_URL` to the deployed URL and a strong `NEXTAUTH_SECRET`.
+5. Optional integrations: `ANTHROPIC_API_KEY` (AI chat), `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway), `SMTP_*` (emails), `CRON_SECRET` + a scheduled job hitting `POST /api/reminders/run` (reminders).
+6. `node prisma/seed.js` to seed bank offers.
 
 ---
 

@@ -312,7 +312,7 @@ export default function Home() {
             
             <TabsContent value="notifications" className="mt-8">
               <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <EMINotificationSystem loans={[]} />
+                <EMINotificationSystem />
               </div>
             </TabsContent>
             

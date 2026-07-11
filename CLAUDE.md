@@ -41,8 +41,9 @@ node prisma/seed.js      # seed bank offers (idempotent)
 - **Prisma version is pinned to v6** — v7 has a breaking config format (`prisma.config.ts`, driver adapters). Don't upgrade casually.
 - **react-day-picker is v9** — `components/ui/calendar.tsx` uses the v9 API (`Chevron` component, `month_caption`/`weekdays`/`day_button` classNames). Don't paste v8-era shadcn calendar snippets.
 - Never commit `.env` or `prisma/dev.db` (both gitignored).
+- **Primary CTAs use `<Button variant="gradient">`** (defined in `components/ui/button.tsx`) — don't inline `bg-gradient-to-r ...` classes on buttons; that's how the tool tabs drifted apart before. Currency is always ₹ with `toLocaleString("en-IN")` in the UI ("Rs." only inside generated PDFs).
 
 ## Honest feature status
 
-Real: auth, loan CRUD, payment recording with amortization, payment-history chart, bank offers, chatbot (Claude or fallback), recommendations, per-loan notification *preference*.
-Not real yet (README roadmap): payment gateway, email/SMS reminder delivery, password-reset emails, PDF export, Postgres/deployment.
+Real: auth, loan CRUD, payment recording with amortization, payment-history chart, bank offers, chatbot (Claude or fallback), recommendations, per-loan notification preference, payment gateway (Razorpay test mode via `lib/razorpay.ts`; simulated checkout fallback when keys unset), real alerts (`/api/alerts`), email EMI reminders (`/api/reminders/run`, SMTP via `lib/mailer.ts` or console fallback), token-based password reset, PDF statement export (jspdf — uses "Rs." because built-in fonts lack the ₹ glyph).
+Not real yet (README roadmap): SMS reminders, Postgres/deployment (steps documented in README; local dev stays SQLite).

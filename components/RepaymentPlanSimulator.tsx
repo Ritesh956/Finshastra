@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,7 +20,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
+
+const formatINR = (value: number) => value.toLocaleString("en-IN", { maximumFractionDigits: 0 })
 
 interface SimulationResult {
   currentEMI: number
@@ -33,44 +33,26 @@ interface SimulationResult {
 }
 
 export function RepaymentPlanSimulator() {
-  const router = useRouter()
   const [loanAmount, setLoanAmount] = useState(100000)
   const [interestRate, setInterestRate] = useState(5)
   const [currentTenure, setCurrentTenure] = useState(60)
   const [newTenure, setNewTenure] = useState(60)
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loanType, setLoanType] = useState("personal")
   const [includeInsurance, setIncludeInsurance] = useState(false)
   const [insuranceRate, setInsuranceRate] = useState(0.5)
   const [prepaymentAmount, setPrepaymentAmount] = useState("")
-  const [simulationProgress, setSimulationProgress] = useState(0)
 
   useEffect(() => {
     // Reset simulation result when inputs change
     setSimulationResult(null)
   }, [loanAmount, interestRate, currentTenure, newTenure, loanType, includeInsurance, insuranceRate, prepaymentAmount])
 
-  const simulateRepayment = async () => {
-    setIsLoading(true)
+  const simulateRepayment = () => {
     setError(null)
-    setSimulationProgress(0)
 
     try {
-      // Simulate API call or complex calculation
-      await new Promise((resolve) => {
-        let progress = 0
-        const interval = setInterval(() => {
-          progress += 10
-          setSimulationProgress(progress)
-          if (progress >= 100) {
-            clearInterval(interval)
-            resolve(null)
-          }
-        }, 200)
-      })
-
       const prepaymentValue = Number(prepaymentAmount) || 0
       const effectiveRate = includeInsurance ? interestRate + insuranceRate : interestRate
       const currentEMI = calculateEMI(loanAmount, effectiveRate, currentTenure)
@@ -101,21 +83,7 @@ export function RepaymentPlanSimulator() {
         description: "Failed to simulate repayment plan. Please try again.",
         variant: "destructive",
       })
-    } finally {
-      setIsLoading(false)
-      setSimulationProgress(100)
     }
-  }
-
-  const handleApplyChanges = () => {
-    // Implement logic to apply the new repayment plan
-    console.log("Applying new repayment plan")
-    toast({
-      title: "Changes Applied",
-      description: "Your new repayment plan has been applied successfully.",
-    })
-    // Redirect to a confirmation page
-    router.push("/repayment-confirmation")
   }
 
   const generateRepaymentSchedule = (principal: number, rate: number, tenure: number) => {
@@ -256,16 +224,10 @@ export function RepaymentPlanSimulator() {
           <Label>New Tenure: {newTenure} months</Label>
           <Slider min={12} max={360} step={12} value={[newTenure]} onValueChange={(value) => setNewTenure(value[0])} />
         </div>
-        <Button onClick={simulateRepayment} className="w-full" disabled={isLoading}>
-          {isLoading ? "Simulating..." : "Simulate Repayment"}
+        <Button variant="gradient" onClick={simulateRepayment} className="w-full h-12 text-base font-semibold">
+          Simulate Repayment
         </Button>
 
-        {isLoading && (
-          <div className="space-y-2">
-            <Progress value={simulationProgress} className="w-full" />
-            <p className="text-center text-sm text-slate-400">Simulating repayment plan...</p>
-          </div>
-        )}
         {error && (
           <div className="flex items-center space-x-2 text-red-500">
             <AlertTriangle className="h-4 w-4" />
@@ -283,11 +245,11 @@ export function RepaymentPlanSimulator() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>EMI:</span>
-                      <span className="font-medium">${simulationResult.currentEMI.toFixed(2)}</span>
+                      <span className="font-medium">₹{formatINR(simulationResult.currentEMI)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Total Interest:</span>
-                      <span className="font-medium">${simulationResult.currentTotalInterest.toFixed(2)}</span>
+                      <span className="font-medium">₹{formatINR(simulationResult.currentTotalInterest)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Tenure:</span>
@@ -296,7 +258,7 @@ export function RepaymentPlanSimulator() {
                     <div className="flex justify-between">
                       <span>Total Payment:</span>
                       <span className="font-medium">
-                        ${(simulationResult.currentTotalInterest + loanAmount).toFixed(2)}
+                        ₹{formatINR(simulationResult.currentTotalInterest + loanAmount)}
                       </span>
                     </div>
                   </div>
@@ -310,11 +272,11 @@ export function RepaymentPlanSimulator() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>EMI:</span>
-                      <span className="font-medium">${simulationResult.newEMI.toFixed(2)}</span>
+                      <span className="font-medium">₹{formatINR(simulationResult.newEMI)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Total Interest:</span>
-                      <span className="font-medium">${simulationResult.newTotalInterest.toFixed(2)}</span>
+                      <span className="font-medium">₹{formatINR(simulationResult.newTotalInterest)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Tenure:</span>
@@ -323,18 +285,18 @@ export function RepaymentPlanSimulator() {
                     <div className="flex justify-between">
                       <span>Total Payment:</span>
                       <span className="font-medium">
-                        ${(simulationResult.newTotalInterest + loanAmount - (Number(prepaymentAmount) || 0)).toFixed(2)}
+                        ₹{formatINR(simulationResult.newTotalInterest + loanAmount - (Number(prepaymentAmount) || 0))}
                       </span>
                     </div>
-                    <div className="flex justify-between text-green-600">
+                    <div className="flex justify-between text-green-500">
                       <span>Savings:</span>
                       <span className="font-medium">
-                        $
-                        {(
+                        ₹
+                        {formatINR(
                           simulationResult.currentTotalInterest +
-                          loanAmount -
-                          (simulationResult.newTotalInterest + loanAmount - (Number(prepaymentAmount) || 0))
-                        ).toFixed(2)}
+                            loanAmount -
+                            (simulationResult.newTotalInterest + loanAmount - (Number(prepaymentAmount) || 0)),
+                        )}
                       </span>
                     </div>
                   </div>
@@ -369,17 +331,14 @@ export function RepaymentPlanSimulator() {
             <div className="flex items-center justify-center space-x-4">
               <div className="text-center">
                 <p className="text-sm text-slate-400">Current EMI</p>
-                <p className="text-2xl font-bold text-white">${simulationResult.currentEMI.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-white">₹{formatINR(simulationResult.currentEMI)}</p>
               </div>
               <ArrowRight className="w-6 h-6 text-slate-400" />
               <div className="text-center">
                 <p className="text-sm text-slate-400">New EMI</p>
-                <p className="text-2xl font-bold text-white">${simulationResult.newEMI.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-white">₹{formatINR(simulationResult.newEMI)}</p>
               </div>
             </div>
-            <Button className="w-full mt-4" onClick={handleApplyChanges}>
-              Apply New Repayment Plan
-            </Button>
           </div>
         )}
       </CardContent>

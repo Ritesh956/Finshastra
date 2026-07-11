@@ -12,16 +12,30 @@ import { Mail, CheckCircle2, ArrowLeft } from "lucide-react"
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [success, setSuccess] = useState(false)
+  const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsLoading(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setSuccess(true)
-    setIsLoading(false)
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Something went wrong. Please try again.")
+        return
+      }
+      setSuccess(true)
+    } catch {
+      setError("Network error. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -62,7 +76,12 @@ export default function ForgotPasswordPage() {
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isLoading || !email}>
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                <Button type="submit" variant="gradient" className="w-full" disabled={isLoading || !email}>
                   {isLoading ? "Sending..." : "Send Reset Link"}
                 </Button>
               </form>

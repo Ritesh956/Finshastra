@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isRazorpayConfigured, verifyRazorpaySignature } from "@/lib/razorpay"
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -23,6 +24,31 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "This loan is already fully paid" }, { status: 400 })
     }
 
+    // Gateway payments must carry a verifiable signature (Razorpay) or a
+    // simulated order id from our own order endpoint.
+    let method = "manual"
+    let gatewayPaymentId: string | null = null
+    if (body.method === "razorpay") {
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = body
+      if (
+        !isRazorpayConfigured() ||
+        typeof razorpayOrderId !== "string" ||
+        typeof razorpayPaymentId !== "string" ||
+        typeof razorpaySignature !== "string" ||
+        !verifyRazorpaySignature(razorpayOrderId, razorpayPaymentId, razorpaySignature)
+      ) {
+        return NextResponse.json({ error: "Payment verification failed" }, { status: 400 })
+      }
+      method = "razorpay"
+      gatewayPaymentId = razorpayPaymentId
+    } else if (body.method === "simulated") {
+      if (typeof body.orderId !== "string" || !body.orderId.startsWith("sim_order_")) {
+        return NextResponse.json({ error: "Invalid simulated order" }, { status: 400 })
+      }
+      method = "simulated"
+      gatewayPaymentId = body.orderId
+    }
+
     const monthlyRate = loan.interestRate / 12 / 100
     const interestComponent = Math.round(loan.outstandingBalance * monthlyRate * 100) / 100
     const principalComponent = Math.max(0, Math.round((amount - interestComponent) * 100) / 100)
@@ -38,6 +64,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
           amount,
           principalComponent,
           interestComponent,
+          method,
+          gatewayPaymentId,
         },
       }),
       prisma.loan.update({
