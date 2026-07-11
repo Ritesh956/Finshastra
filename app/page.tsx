@@ -1,34 +1,24 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LoanComparisonTool } from "@/components/LoanComparisonTool"
-import { PersonalizedRecommendations } from "@/components/PersonalizedRecommendations"
-import { RepaymentPlanSimulator } from "@/components/RepaymentPlanSimulator"
-import { EMINotificationSystem } from "@/components/EMINotificationSystem"
-import { AIChatbot } from "@/components/AIChatbot"
-import { FAQ } from "@/components/FAQ"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Calculator,
   PersonStanding,
   BarChart3,
-  Bell,
   MessageSquare,
-  HelpCircle,
   CreditCard,
-  Zap,
   Shield,
   TrendingUp,
+  Bell,
   ArrowRight,
   Sparkles,
   Target,
   Award,
   Users,
   DollarSign,
-  Star,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { useAuth } from "@/contexts/AuthContext"
 import { Badge } from "@/components/ui/badge"
 
@@ -229,105 +219,52 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Tools Section - Ultra Modern Dark Theme */}
+      {/* Tools Teaser - links out to the dedicated /tools page instead of burying live tools here */}
       <section className="relative py-20 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 overflow-hidden">
-        {/* Background Effects */}
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:64px_64px]"></div>
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[150px]"></div>
         <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-[150px]"></div>
-        
+
         <div className="container mx-auto px-4 relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black mb-8 leading-none tracking-tighter">
+          <div className="text-center mb-12">
+            <h2 className="text-5xl md:text-6xl lg:text-7xl font-black mb-4 leading-none tracking-tighter">
               <span className="bg-gradient-to-r from-purple-400 via-pink-400 to-red-400 bg-clip-text text-transparent drop-shadow-2xl">
                 TOOLS
               </span>
             </h2>
+            <p className="text-lg text-slate-400 max-w-xl mx-auto">
+              Everything you need to compare, plan, and manage loans — in one place.
+            </p>
           </div>
 
-          <Tabs defaultValue="compare" className="max-w-7xl mx-auto">
-            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-12 bg-slate-900/50 backdrop-blur-md p-3 rounded-3xl shadow-2xl border border-slate-700 h-auto gap-3">
-              <TabsTrigger 
-                value="compare" 
-                className="flex items-center gap-2 text-base font-bold py-4 rounded-2xl text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/50 transition-all hover:text-white"
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
+            {[
+              { icon: Calculator, label: "Compare Loans", tab: "compare" },
+              { icon: PersonStanding, label: "Recommendations", tab: "recommendations" },
+              { icon: BarChart3, label: "Repayment Simulator", tab: "simulator" },
+              { icon: MessageSquare, label: "AI Assistant", tab: "chat" },
+            ].map(({ icon: Icon, label, tab }) => (
+              <Link
+                key={tab}
+                href={`/tools?tab=${tab}`}
+                className="group flex flex-col items-center text-center gap-3 rounded-2xl bg-slate-900/50 backdrop-blur-md border border-slate-800 hover:border-purple-500/50 p-6 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/20 hover:-translate-y-1"
               >
-                <Calculator className="w-5 h-5" />
-                <span className="hidden sm:inline">Compare</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="recommendations" 
-                className="flex items-center gap-2 text-base font-bold py-4 rounded-2xl text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/50 transition-all hover:text-white"
-              >
-                <PersonStanding className="w-5 h-5" />
-                <span className="hidden sm:inline">Recommend</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="simulator" 
-                className="flex items-center gap-2 text-base font-bold py-4 rounded-2xl text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/50 transition-all hover:text-white"
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span className="hidden sm:inline">Simulator</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="notifications" 
-                className="flex items-center gap-2 text-base font-bold py-4 rounded-2xl text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/50 transition-all hover:text-white"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="hidden sm:inline">Alerts</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="chatbot" 
-                className="flex items-center gap-2 text-base font-bold py-4 rounded-2xl text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/50 transition-all hover:text-white"
-              >
-                <MessageSquare className="w-5 h-5" />
-                <span className="hidden sm:inline">AI Chat</span>
-              </TabsTrigger>
-              <TabsTrigger 
-                value="faq" 
-                className="flex items-center gap-2 text-base font-bold py-4 rounded-2xl text-slate-400 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/50 transition-all hover:text-white"
-              >
-                <HelpCircle className="w-5 h-5" />
-                <span className="hidden sm:inline">FAQ</span>
-              </TabsTrigger>
-            </TabsList>
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <Icon className="w-7 h-7 text-white" />
+                </div>
+                <span className="font-bold text-white">{label}</span>
+              </Link>
+            ))}
+          </div>
 
-            {/* Tab Content Sections - Dark Theme */}
-            <TabsContent value="compare" className="mt-8">
-              <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <LoanComparisonTool />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="recommendations" className="mt-8">
-              <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <PersonalizedRecommendations />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="simulator" className="mt-8">
-              <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <RepaymentPlanSimulator />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="notifications" className="mt-8">
-              <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <EMINotificationSystem />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="chatbot" className="mt-8">
-              <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <AIChatbot />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="faq" className="mt-8">
-              <div className="rounded-3xl bg-slate-900/50 backdrop-blur-md p-8 border border-slate-800 shadow-2xl">
-                <FAQ />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="text-center mt-10">
+            <Button variant="gradient" size="lg" asChild className="px-10 py-6 rounded-2xl text-lg font-bold">
+              <Link href="/tools" className="flex items-center gap-2">
+                Explore All Tools
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>

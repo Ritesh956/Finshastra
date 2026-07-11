@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import Link from "next/link"
 import {
   AreaChart,
   Area,
@@ -24,6 +25,10 @@ import {
   Trash2,
   IndianRupee,
   Loader2,
+  Calculator,
+  PersonStanding,
+  BarChart3,
+  MessageSquare,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -272,11 +277,26 @@ export function UserDashboard() {
 
   return (
     <div className="space-y-6">
-      {loans.length > 0 && (
-        <div className="flex justify-end">
-          <ExportStatementButton loans={loans} userName={user?.name ?? "FinShastra user"} />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { icon: Calculator, label: "Compare", tab: "compare" },
+            { icon: PersonStanding, label: "Recommendations", tab: "recommendations" },
+            { icon: BarChart3, label: "Simulator", tab: "simulator" },
+            { icon: MessageSquare, label: "AI Chat", tab: "chat" },
+          ].map(({ icon: Icon, label, tab }) => (
+            <Link
+              key={tab}
+              href={`/tools?tab=${tab}`}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/50 px-3 py-1.5 text-sm font-medium text-slate-300 hover:text-white hover:border-purple-600/50 hover:bg-slate-800 transition-colors"
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {label}
+            </Link>
+          ))}
         </div>
-      )}
+        {loans.length > 0 && <ExportStatementButton loans={loans} userName={user?.name ?? "FinShastra user"} />}
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

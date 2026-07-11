@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Calculator, Calendar, Settings, Smile, User } from "lucide-react"
+import { Calculator, Calendar, MessageSquare, Smile, User } from "lucide-react"
 
 import {
   CommandDialog,
@@ -53,30 +53,29 @@ export function Command() {
               <User className="mr-2 h-4 w-4" />
               <span>Dashboard</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => router.push("/comparison"))}>
+            <CommandItem onSelect={() => runCommand(() => router.push("/tools?tab=compare"))}>
               <Calculator className="mr-2 h-4 w-4" />
               <span>Loan Comparison</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => router.push("/simulator"))}>
+            <CommandItem onSelect={() => runCommand(() => router.push("/tools?tab=simulator"))}>
               <Calendar className="mr-2 h-4 w-4" />
               <span>Repayment Simulator</span>
             </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => router.push("/recommendations"))}>
+            <CommandItem onSelect={() => runCommand(() => router.push("/tools?tab=recommendations"))}>
               <Smile className="mr-2 h-4 w-4" />
               <span>Recommendations</span>
             </CommandItem>
+            <CommandItem onSelect={() => runCommand(() => router.push("/tools?tab=chat"))}>
+              <MessageSquare className="mr-2 h-4 w-4" />
+              <span>AI Chat</span>
+            </CommandItem>
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Settings">
+          <CommandGroup heading="Account">
             <CommandItem onSelect={() => runCommand(() => router.push("/profile"))}>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
               <CommandShortcut>⌘P</CommandShortcut>
-            </CommandItem>
-            <CommandItem onSelect={() => runCommand(() => router.push("/settings"))}>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
-              <CommandShortcut>⌘S</CommandShortcut>
             </CommandItem>
           </CommandGroup>
         </CommandList>

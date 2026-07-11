@@ -50,17 +50,37 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
                 Home
               </Link>
               {isAuthenticated && (
-                <Link 
-                  href="/dashboard" 
+                <Link
+                  href="/dashboard"
                   className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                    pathname === "/dashboard" 
-                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105" 
+                    pathname === "/dashboard"
+                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105"
                       : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
                   }`}
                 >
                   Dashboard
                 </Link>
               )}
+              <Link
+                href="/tools"
+                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  pathname === "/tools"
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105"
+                    : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
+                }`}
+              >
+                Tools
+              </Link>
+              <Link
+                href="/faq"
+                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  pathname === "/faq"
+                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105"
+                    : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
+                }`}
+              >
+                FAQ
+              </Link>
             </nav>
           </div>
           <div className="flex items-center space-x-3" suppressHydrationWarning>
