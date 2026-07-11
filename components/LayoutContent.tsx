@@ -1,18 +1,34 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { Menu } from "lucide-react"
 import { Command } from "@/components/Command"
 import { AlertDialogDemo } from "@/components/AlertDialog"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { UserProfileDropdown } from "@/components/UserProfileDropdown"
 import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
+
+const NAV_LINKS = [
+  { href: "/", label: "Home", requiresAuth: false },
+  { href: "/dashboard", label: "Dashboard", requiresAuth: true },
+  { href: "/tools", label: "Tools", requiresAuth: false },
+  { href: "/faq", label: "FAQ", requiresAuth: false },
+] as const
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // Close the mobile nav automatically whenever the route changes
+  useEffect(() => {
+    setMobileNavOpen(false)
+  }, [pathname])
 
   // Don't show header/footer on login/signup pages
   const isAuthPage = pathname === "/login" || pathname === "/signup"
@@ -20,6 +36,8 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
   if (isAuthPage) {
     return <>{children}</>
   }
+
+  const visibleNavLinks = NAV_LINKS.filter((link) => !link.requiresAuth || isAuthenticated)
 
   return (
     <div className="flex flex-col min-h-screen bg-background" suppressHydrationWarning>
@@ -39,48 +57,19 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
               </div>
             </Link>
             <nav className="hidden lg:flex items-center space-x-1 ml-8">
-              <Link 
-                href="/" 
-                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  pathname === "/" 
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105" 
-                    : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
-                }`}
-              >
-                Home
-              </Link>
-              {isAuthenticated && (
+              {visibleNavLinks.map(({ href, label }) => (
                 <Link
-                  href="/dashboard"
+                  key={href}
+                  href={href}
                   className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                    pathname === "/dashboard"
+                    pathname === href
                       ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105"
                       : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
                   }`}
                 >
-                  Dashboard
+                  {label}
                 </Link>
-              )}
-              <Link
-                href="/tools"
-                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  pathname === "/tools"
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105"
-                    : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
-                }`}
-              >
-                Tools
-              </Link>
-              <Link
-                href="/faq"
-                className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  pathname === "/faq"
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/30 scale-105"
-                    : "text-slate-300 hover:bg-gradient-to-r hover:from-slate-800 hover:to-slate-700 hover:scale-105"
-                }`}
-              >
-                FAQ
-              </Link>
+              ))}
             </nav>
           </div>
           <div className="flex items-center space-x-3" suppressHydrationWarning>
@@ -109,6 +98,38 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
                 </Button>
               </div>
             )}
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden text-slate-300 hover:bg-slate-800 hover:text-white rounded-xl"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-5 w-5" aria-hidden="true" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="bg-slate-950 border-purple-900/30 w-72">
+                <SheetHeader>
+                  <SheetTitle className="text-white">Menu</SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col gap-1">
+                  {visibleNavLinks.map(({ href, label }) => (
+                    <Link
+                      key={href}
+                      href={href}
+                      className={`px-4 py-3 rounded-xl text-base font-bold transition-colors ${
+                        pathname === href
+                          ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
