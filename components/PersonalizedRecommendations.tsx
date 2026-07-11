@@ -26,7 +26,8 @@ const REFERENCE_AMOUNT = 500000
 function offerToLoan(offer: BankOffer): Loan {
   return {
     id: offer.id,
-    type: offer.loanType,
+    // LoanCard renders "{type} Loan", so strip the suffix ("Home Loan" → "Home")
+    type: offer.loanType.replace(/ Loan$/, ""),
     institution: offer.bankName,
     interestRate: offer.interestRate,
     tenure: offer.maxTenure,

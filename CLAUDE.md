@@ -47,6 +47,7 @@ node prisma/seed.js      # seed bank offers (idempotent)
 - **Prisma version is pinned to v6** — v7 has a breaking config format (`prisma.config.ts`, driver adapters). Don't upgrade casually.
 - **react-day-picker is v9** — `components/ui/calendar.tsx` uses the v9 API (`Chevron` component, `month_caption`/`weekdays`/`day_button` classNames). Don't paste v8-era shadcn calendar snippets.
 - Never commit `.env` or `prisma/dev.db` (both gitignored).
+- **`LoanCard` renders `{loan.type} Loan`** — anything mapping a `BankOffer` into it must strip the `" Loan"` suffix from `loanType` (`.replace(/ Loan$/, "")`) or badges read "Home Loan Loan". Both `LoanComparisonTool` and `PersonalizedRecommendations` do this.
 - **Primary CTAs use `<Button variant="gradient">`** (defined in `components/ui/button.tsx`) — don't inline `bg-gradient-to-r ...` classes on buttons; that's how the tool tabs drifted apart before. Currency is always ₹ with `toLocaleString("en-IN")` in the UI ("Rs." only inside generated PDFs).
 
 ## Honest feature status
