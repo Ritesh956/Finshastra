@@ -62,7 +62,7 @@ Open http://localhost:3000, sign up, and add your first loan.
 ### Tests
 
 ```bash
-npm test          # Vitest — EMI math + knowledge base
+npm test          # Vitest — EMI math, payment amortization, alerts, reset tokens, gateway signatures, rate limiting
 npx tsc --noEmit  # typecheck (also enforced during `next build`)
 ```
 

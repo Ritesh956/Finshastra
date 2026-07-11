@@ -11,8 +11,20 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" })
 
 export const metadata: Metadata = {
-  title: "FinShastra - Smart Loan Management",
-  description: "Empowering your financial journey with intelligent loan management and personalized insights",
+  title: {
+    default: "FinShastra - Smart Loan Management",
+    template: "%s | FinShastra",
+  },
+  description:
+    "Track loans, pay EMIs, compare bank offers, and get AI-powered recommendations — intelligent loan management built for India.",
+  keywords: ["loan management", "EMI calculator", "loan comparison", "EMI tracker", "India"],
+  openGraph: {
+    title: "FinShastra - Smart Loan Management",
+    description:
+      "Track loans, pay EMIs, compare bank offers, and get AI-powered recommendations — intelligent loan management built for India.",
+    type: "website",
+    siteName: "FinShastra",
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

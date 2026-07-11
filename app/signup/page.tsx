@@ -270,7 +270,7 @@ export default function SignupPage() {
                 </label>
               </div>
 
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isLoading}>
+              <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
