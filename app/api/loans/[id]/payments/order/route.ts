@@ -4,6 +4,7 @@ import crypto from "crypto"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isRazorpayConfigured, createRazorpayOrder } from "@/lib/razorpay"
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit"
 
 // Creates a payment order for a loan's next EMI. Returns a Razorpay order when
 // keys are configured, otherwise a simulated order the client can "pay" locally.
@@ -12,6 +13,9 @@ export async function POST(_request: Request, { params }: { params: { id: string
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const { allowed, retryAfterSeconds } = rateLimit(`loans:payments:${session.user.id}`, 20, 15 * 60 * 1000)
+  if (!allowed) return rateLimitResponse(retryAfterSeconds)
 
   const loan = await prisma.loan.findUnique({ where: { id: params.id } })
   if (!loan || loan.userId !== session.user.id) {

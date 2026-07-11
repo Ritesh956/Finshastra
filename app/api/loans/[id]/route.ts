@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit"
 
 async function getOwnedLoan(loanId: string) {
   const session = await getServerSession(authOptions)
@@ -17,6 +18,9 @@ async function getOwnedLoan(loanId: string) {
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const { error, status, loan } = await getOwnedLoan(params.id)
   if (error || !loan) return NextResponse.json({ error }, { status })
+
+  const { allowed, retryAfterSeconds } = rateLimit(`loans:mutate:${loan.userId}`, 40, 15 * 60 * 1000)
+  if (!allowed) return rateLimitResponse(retryAfterSeconds)
 
   try {
     const body = await request.json()
@@ -40,6 +44,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   const { error, status, loan } = await getOwnedLoan(params.id)
   if (error || !loan) return NextResponse.json({ error }, { status })
+
+  const { allowed, retryAfterSeconds } = rateLimit(`loans:mutate:${loan.userId}`, 40, 15 * 60 * 1000)
+  if (!allowed) return rateLimitResponse(retryAfterSeconds)
 
   await prisma.loan.delete({ where: { id: loan.id } })
   return NextResponse.json({ ok: true })

@@ -27,12 +27,16 @@ node prisma/seed.js      # seed bank offers (idempotent)
 
 ## Architecture
 
-- **Auth**: NextAuth credentials provider in `lib/auth.ts` (bcrypt compare against Prisma `User`). `contexts/AuthContext.tsx` wraps NextAuth's `useSession`/`signIn`/`signOut` but exposes the legacy `useAuth()` interface (`user`, `isAuthenticated`, `isLoading`, `login`, `logout`, `signup`, `updateProfile`) — all pages consume that, not NextAuth directly. `middleware.ts` protects `/dashboard` and `/profile`. Client-side redirects must check `isLoading` before `isAuthenticated` (session starts in "loading").
+- **Auth**: NextAuth credentials provider in `lib/auth.ts` (bcrypt compare against Prisma `User`). `contexts/AuthContext.tsx` wraps NextAuth's `useSession`/`signIn`/`signOut` but exposes the legacy `useAuth()` interface (`user`, `isAuthenticated`, `isLoading`, `login`, `logout`, `signup`, `updateProfile`) — all pages consume that, not NextAuth directly. `middleware.ts` protects `/dashboard` and `/profile`, and also rate-limits `POST /api/auth/callback/credentials` (login) — see Rate limiting below for why that one has to live in middleware instead of `authorize()`. Client-side redirects must check `isLoading` before `isAuthenticated` (session starts in "loading").
 - **Data**: Prisma singleton in `lib/prisma.ts`. Schema in `prisma/schema.prisma` (User, Loan, Payment, BankOffer). SQLite has no arrays — `BankOffer.features` is a JSON-encoded string, parsed in `app/api/bank-offers/route.ts`.
 - **API routes** (`app/api/`): all loan/payment/user routes are session-scoped via `getServerSession(authOptions)` — always verify `loan.userId === session.user.id` before mutating. Payment recording (`loans/[id]/payments`) splits amount into interest/principal at the loan's monthly rate and updates balance + next due date in a `$transaction`.
 - **AI chat** (`app/api/chat/route.ts`): Claude (`claude-opus-4-8`) with the user's real loan portfolio injected into the system prompt; degrades to `getKnowledgeBaseResponse()` when no key or on API error.
 - **EMI math**: `utils/loanCalculations.ts` — reused by both client (live preview) and server (loan creation). Zero-interest loans are handled as `principal / termMonths` at call sites (the formula divides by zero at 0%).
 - **UI**: shadcn/ui components in `components/ui/`, feature components in `components/`. Dashboard (`components/UserDashboard.tsx`) fetches `/api/loans`, `/api/payments`, `/api/bank-offers` and has loading/error/empty states. Toasts via `hooks/use-toast` + `<Toaster />` in `app/layout.tsx`.
+
+## Rate limiting
+
+`lib/rateLimit.ts` is an in-memory fixed-window limiter — no Redis/external dependency. It works correctly for a single-process deployment (one `next start`) but does **not** share state across multiple instances or between the Node runtime (route handlers) and the Edge runtime (`middleware.ts`); each keeps its own buckets. Applied to: signup, forgot-password, reset-password (all per-IP, in their own route handlers), loan create/update/delete/payments (per-user, in their own route handlers), and login (per-IP, in `middleware.ts` — the only one that has to live there, since NextAuth normalizes every credentials failure to a generic `CredentialsSignin` error before the app ever sees it, so a limit inside `authorize()` couldn't return a distinguishable response). Before scaling beyond one instance, swap the in-memory `Map` for a shared store (e.g. Upstash Redis).
 
 ## Gotchas
 

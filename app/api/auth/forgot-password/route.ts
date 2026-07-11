@@ -2,10 +2,15 @@ import { NextResponse } from "next/server"
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { sendMail } from "@/lib/mailer"
+import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rateLimit"
 
 // Issues a password reset token. Always responds 200 so the endpoint can't be
 // used to probe which emails have accounts.
 export async function POST(request: Request) {
+  const ip = getClientIp(request.headers)
+  const { allowed, retryAfterSeconds } = rateLimit(`forgot-password:${ip}`, 5, 15 * 60 * 1000)
+  if (!allowed) return rateLimitResponse(retryAfterSeconds)
+
   try {
     const { email } = await request.json().catch(() => ({}))
     if (!email || !/\S+@\S+\.\S+/.test(email)) {

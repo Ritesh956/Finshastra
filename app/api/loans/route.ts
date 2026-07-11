@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { calculateEMI } from "@/utils/loanCalculations"
+import { rateLimit, rateLimitResponse } from "@/lib/rateLimit"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -23,6 +24,9 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const { allowed, retryAfterSeconds } = rateLimit(`loans:create:${session.user.id}`, 20, 15 * 60 * 1000)
+  if (!allowed) return rateLimitResponse(retryAfterSeconds)
 
   try {
     const body = await request.json()
