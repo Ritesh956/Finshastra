@@ -19,11 +19,12 @@ node prisma/seed.js      # seed bank offers (idempotent)
 
 ## Environment
 
-`.env` (gitignored — copy from `.env.example`):
+`.env` (gitignored — copy from `.env.example`, which documents the full list):
 - `DATABASE_URL` — SQLite file (`file:./dev.db`, relative to `prisma/`)
 - `NEXTAUTH_SECRET` — JWT signing secret
-- `NEXTAUTH_URL` — must match the dev server port; update it if the port changes
+- `NEXTAUTH_URL` — must match the dev server port; update it if the port changes. Locally the Claude preview config (`.claude/launch.json`) pins port **4321** because Docker Desktop holds 3000/3001 on this machine.
 - `ANTHROPIC_API_KEY` — optional; enables the real Claude chatbot. Without it `/api/chat` falls back to the rule-based knowledge base in `utils/loanKnowledgeBase.ts`.
+- Optional integrations (all degrade gracefully when unset): `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway vs simulated checkout), `SMTP_*`/`EMAIL_FROM` (email vs console logging), `CRON_SECRET` (reminder job auth).
 
 ## Architecture
 
@@ -50,5 +51,9 @@ node prisma/seed.js      # seed bank offers (idempotent)
 
 ## Honest feature status
 
-Real: auth, loan CRUD, payment recording with amortization, payment-history chart, bank offers, chatbot (Claude or fallback), recommendations, per-loan notification preference, payment gateway (Razorpay test mode via `lib/razorpay.ts`; simulated checkout fallback when keys unset), real alerts (`/api/alerts`), email EMI reminders (`/api/reminders/run`, SMTP via `lib/mailer.ts` or console fallback), token-based password reset, PDF statement export (jspdf — uses "Rs." because built-in fonts lack the ₹ glyph).
-Not real yet (README roadmap): SMS reminders, Postgres/deployment (steps documented in README; local dev stays SQLite).
+Real: auth, loan CRUD, payment recording with amortization, payment-history chart, bank offers, chatbot (Claude or fallback), recommendations, per-loan notification preference, payment gateway (Razorpay test mode via `lib/razorpay.ts`; simulated checkout fallback when keys unset), real alerts (`/api/alerts`), email EMI reminders (`/api/reminders/run`, SMTP via `lib/mailer.ts` or console fallback), token-based password reset, PDF statement export (jspdf — uses "Rs." because built-in fonts lack the ₹ glyph), rate limiting, mobile nav, `/tools` + `/faq` pages, 404/error pages.
+Not real yet: SMS reminders (no free provider — deliberately skipped).
+
+## Deployment status & next step
+
+The owner deploys to **Netlify** (never Vercel). **The immediate pending task is switching to Neon Postgres** — the owner has a Neon account; the switch is blocked on his connection string. Steps are in README "Deployment (Postgres)": flip the schema provider, delete the SQLite-specific `prisma/migrations/`, re-init, re-seed, recreate the local demo user (test@gmail.com / test1234). Until then the Netlify deployment loses all data on every deploy (SQLite on serverless doesn't persist). After the switch, the owner must set `DATABASE_URL` in the Netlify dashboard himself and redeploy.

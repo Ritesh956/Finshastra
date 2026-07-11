@@ -107,7 +107,7 @@ npx tsc --noEmit  # typecheck (also enforced during `next build`)
 
 ## Deployment (Postgres)
 
-The app runs on SQLite locally. To deploy:
+The app runs on SQLite locally. **On serverless hosts (Netlify, Vercel) SQLite does not persist** — every deploy or cold start wipes users, loans, and payments — so a hosted Postgres is required for a real deployment. To deploy:
 
 1. Provision Postgres (Neon/Supabase/Railway) and set `DATABASE_URL` to its connection string.
 2. In `prisma/schema.prisma`, change `provider = "sqlite"` to `provider = "postgresql"`.
@@ -115,6 +115,8 @@ The app runs on SQLite locally. To deploy:
 4. Set `NEXTAUTH_URL` to the deployed URL and a strong `NEXTAUTH_SECRET`.
 5. Optional integrations: `ANTHROPIC_API_KEY` (AI chat), `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway), `SMTP_*` (emails), `CRON_SECRET` + a scheduled job hitting `POST /api/reminders/run` (reminders).
 6. `node prisma/seed.js` to seed bank offers.
+
+On **Netlify** specifically: set `DATABASE_URL` (and the other env vars above) under Site settings → Environment variables, then trigger a redeploy.
 
 ---
 
