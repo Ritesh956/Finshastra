@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project
 
-FinShastra — a full-stack loan-management app. Next.js 14 (App Router) + TypeScript + Prisma 6 + SQLite + NextAuth v4 + Tailwind/shadcn-ui. Currency and audience are Indian (₹, `en-IN` formatting, lakh/crore).
+FinShastra — a full-stack loan-management app. Next.js 14 (App Router) + TypeScript + Prisma 6 + Postgres (Neon) + NextAuth v4 + Tailwind/shadcn-ui. Currency and audience are Indian (₹, `en-IN` formatting, lakh/crore).
 
 ## Commands
 
@@ -20,7 +20,7 @@ node prisma/seed.js      # seed bank offers (idempotent)
 ## Environment
 
 `.env` (gitignored — copy from `.env.example`, which documents the full list):
-- `DATABASE_URL` — SQLite file (`file:./dev.db`, relative to `prisma/`)
+- `DATABASE_URL` — Neon Postgres connection string. Locally use the **direct** host (`ep-...neon.tech`); Prisma Migrate does not work through the pooler. On Netlify use the **pooled** host (`ep-...-pooler...neon.tech`) — serverless needs PgBouncer. Strip `channel_binding=require` if Neon's console includes it; keep `sslmode=require`.
 - `NEXTAUTH_SECRET` — JWT signing secret
 - `NEXTAUTH_URL` — must match the dev server port; update it if the port changes. Locally the Claude preview config (`.claude/launch.json`) pins port **4321** because Docker Desktop holds 3000/3001 on this machine.
 - `ANTHROPIC_API_KEY` — optional; enables the real Claude chatbot. Without it `/api/chat` falls back to the rule-based knowledge base in `utils/loanKnowledgeBase.ts`.
@@ -29,7 +29,7 @@ node prisma/seed.js      # seed bank offers (idempotent)
 ## Architecture
 
 - **Auth**: NextAuth credentials provider in `lib/auth.ts` (bcrypt compare against Prisma `User`). `contexts/AuthContext.tsx` wraps NextAuth's `useSession`/`signIn`/`signOut` but exposes the legacy `useAuth()` interface (`user`, `isAuthenticated`, `isLoading`, `login`, `logout`, `signup`, `updateProfile`) — all pages consume that, not NextAuth directly. `middleware.ts` protects `/dashboard` and `/profile`, and also rate-limits `POST /api/auth/callback/credentials` (login) — see Rate limiting below for why that one has to live in middleware instead of `authorize()`. Client-side redirects must check `isLoading` before `isAuthenticated` (session starts in "loading").
-- **Data**: Prisma singleton in `lib/prisma.ts`. Schema in `prisma/schema.prisma` (User, Loan, Payment, BankOffer). SQLite has no arrays — `BankOffer.features` is a JSON-encoded string, parsed in `app/api/bank-offers/route.ts`.
+- **Data**: Prisma singleton in `lib/prisma.ts`. Schema in `prisma/schema.prisma` (User, Loan, Payment, BankOffer, PasswordResetToken). `BankOffer.features` is a JSON-encoded string (kept from the SQLite era for compatibility), parsed in `app/api/bank-offers/route.ts`.
 - **API routes** (`app/api/`): all loan/payment/user routes are session-scoped via `getServerSession(authOptions)` — always verify `loan.userId === session.user.id` before mutating. Payment recording (`loans/[id]/payments`) splits amount into interest/principal at the loan's monthly rate and updates balance + next due date in a `$transaction`.
 - **Route business logic lives in `lib/`, not in the handlers**: payment amortization split + due-date advance in `lib/payments.ts`, alert derivation in `lib/alerts.ts`, reset-token hashing/expiry in `lib/resetToken.ts` — each with a co-located `*.test.ts`. Keep new domain logic in testable pure functions there; route handlers should only do session checks, Prisma I/O, and response shaping. `advanceDueDateByOneMonth` clamps to month-end (Jan 31 → Feb 28/29) — don't replace it with a bare `setMonth(+1)`, which overflows into March.
 - **AI chat** (`app/api/chat/route.ts`): Claude (`claude-opus-4-8`) with the user's real loan portfolio injected into the system prompt; degrades to `getKnowledgeBaseResponse()` when no key or on API error.
@@ -52,9 +52,9 @@ node prisma/seed.js      # seed bank offers (idempotent)
 
 ## Honest feature status
 
-Real: auth, loan CRUD, payment recording with amortization, payment-history chart, bank offers, chatbot (Claude or fallback), recommendations, per-loan notification preference, payment gateway (Razorpay test mode via `lib/razorpay.ts`; simulated checkout fallback when keys unset), real alerts (`/api/alerts`), email EMI reminders (`/api/reminders/run`, SMTP via `lib/mailer.ts` or console fallback), token-based password reset, PDF statement export (jspdf — uses "Rs." because built-in fonts lack the ₹ glyph), rate limiting, mobile nav, `/tools` + `/faq` pages, 404/error pages.
+Real: auth, loan CRUD, payment recording with amortization, payment-history chart, bank offers, chatbot (Claude or fallback), recommendations, per-loan notification preference, payment gateway (Razorpay test mode via `lib/razorpay.ts`; simulated checkout fallback when keys unset), real alerts (`/api/alerts`), email EMI reminders (`/api/reminders/run`, SMTP via `lib/mailer.ts` or console fallback), token-based password reset, PDF statement export (jspdf — uses "Rs." because built-in fonts lack the ₹ glyph), rate limiting, mobile nav, `/tools` + `/faq` pages, 404/error pages, Neon Postgres persistence.
 Not real yet: SMS reminders (no free provider — deliberately skipped).
 
-## Deployment status & next step
+## Deployment status
 
-The owner deploys to **Netlify** (never Vercel). **The immediate pending task is switching to Neon Postgres** — the owner has a Neon account; the switch is blocked on his connection string. Steps are in README "Deployment (Postgres)": flip the schema provider, delete the SQLite-specific `prisma/migrations/`, re-init, re-seed, recreate the local demo user (test@gmail.com / test1234). Until then the Netlify deployment loses all data on every deploy (SQLite on serverless doesn't persist). After the switch, the owner must set `DATABASE_URL` in the Netlify dashboard himself and redeploy.
+The owner deploys to **Netlify** (never Vercel). The database is **Neon Postgres** (switched 2026-07-11; migrations re-initialized, offers seeded, demo user test@gmail.com / test1234 recreated). The one remaining manual step is the owner's: set `DATABASE_URL` in Netlify → Site settings → Environment variables using the **pooled** Neon host (`...-pooler...neon.tech`) and redeploy. Local `.env` uses the direct host (required for `prisma migrate`).

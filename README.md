@@ -12,7 +12,7 @@ A full-stack loan-management platform built with Next.js 14. Track loans with re
 
 ### Real, working functionality
 - **Authentication** — NextAuth.js with credentials provider, bcrypt-hashed passwords, JWT sessions, and middleware-protected routes (`/dashboard`, `/profile`)
-- **Persistent loan tracking** — loans live in a SQLite database via Prisma; add, delete, and pay EMIs and they survive restarts
+- **Persistent loan tracking** — loans live in Neon Postgres via Prisma; add, delete, and pay EMIs and they survive restarts and redeploys
 - **Correct EMI math** — standard amortization formula; each payment is split into interest and principal components, balance and next-due-date update in a transaction
 - **Payment history** — real monthly aggregates charted on the dashboard
 - **Bank offers** — seeded reference data served from the database, used by the comparison table and personalized recommendations
@@ -30,7 +30,7 @@ A full-stack loan-management platform built with Next.js 14. Track loans with re
 ### Honest limitations
 - Payments don't move real money — Razorpay runs in test mode, and the fallback checkout is simulated
 - No SMS delivery (email only)
-- SQLite is for development; swap `DATABASE_URL` to Postgres for production (see Deployment below)
+- Free-tier services throughout: Neon Postgres, Razorpay test mode, SMTP optional
 
 ## Getting Started
 
@@ -45,7 +45,7 @@ npm install
 
 # 2. Configure environment
 cp .env.example .env
-#    - DATABASE_URL: leave as-is for SQLite
+#    - DATABASE_URL: your Neon Postgres connection string (direct host, not -pooler)
 #    - NEXTAUTH_SECRET: generate with `openssl rand -base64 32`
 #    - ANTHROPIC_API_KEY: optional — enables the real AI chatbot
 
@@ -71,7 +71,7 @@ npx tsc --noEmit  # typecheck (also enforced during `next build`)
 | Layer | Tech |
 |---|---|
 | Framework | Next.js 14 (App Router), React 18, TypeScript |
-| Database | Prisma 6 + SQLite (dev) |
+| Database | Prisma 6 + Postgres (Neon) |
 | Auth | NextAuth.js v4, bcryptjs |
 | AI | Anthropic Claude API (`@anthropic-ai/sdk`) with rule-based fallback |
 | UI | Tailwind CSS, shadcn/ui, Radix, Recharts, lucide-react |
@@ -103,20 +103,16 @@ npx tsc --noEmit  # typecheck (also enforced during `next build`)
 - [x] Real password reset flow
 - [x] PDF statement export
 - [ ] SMS reminders
-- [ ] Postgres + deployment (see below)
+- [x] Postgres (Neon) — persistent data locally and in production
 
-## Deployment (Postgres)
+## Deployment
 
-The app runs on SQLite locally. **On serverless hosts (Netlify, Vercel) SQLite does not persist** — every deploy or cold start wipes users, loans, and payments — so a hosted Postgres is required for a real deployment. To deploy:
+The app uses Neon Postgres, so data persists across deploys. On the hosting side (Netlify):
 
-1. Provision Postgres (Neon/Supabase/Railway) and set `DATABASE_URL` to its connection string.
-2. In `prisma/schema.prisma`, change `provider = "sqlite"` to `provider = "postgresql"`.
-3. Delete `prisma/migrations/` (they are SQLite-specific) and run `npx prisma migrate dev --name init` once against the new database, then `npx prisma migrate deploy` in CI/production.
-4. Set `NEXTAUTH_URL` to the deployed URL and a strong `NEXTAUTH_SECRET`.
-5. Optional integrations: `ANTHROPIC_API_KEY` (AI chat), `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway), `SMTP_*` (emails), `CRON_SECRET` + a scheduled job hitting `POST /api/reminders/run` (reminders).
-6. `node prisma/seed.js` to seed bank offers.
-
-On **Netlify** specifically: set `DATABASE_URL` (and the other env vars above) under Site settings → Environment variables, then trigger a redeploy.
+1. Set `DATABASE_URL` under Site settings → Environment variables — use the **pooled** Neon connection string (host contains `-pooler`); serverless functions need PgBouncer. Locally, `.env` should use the **direct** host instead, since `prisma migrate` doesn't work through the pooler.
+2. Set `NEXTAUTH_URL` to the deployed URL and a strong `NEXTAUTH_SECRET`.
+3. Optional integrations: `ANTHROPIC_API_KEY` (AI chat), `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` (real gateway), `SMTP_*` (emails), `CRON_SECRET` + a scheduled job hitting `POST /api/reminders/run` (reminders).
+4. Trigger a redeploy. For future schema changes, run `npx prisma migrate deploy` against the database (or locally with the direct URL).
 
 ---
 
