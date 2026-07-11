@@ -10,22 +10,37 @@ const formatDate = (date: Date) =>
   date.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })
 
 // Sends EMI reminder emails for loans due within the next 3 days (or overdue)
-// that have notifications enabled. Trigger it from a cron job with
-// `Authorization: Bearer <CRON_SECRET>`, or as a logged-in user (own loans only).
-export async function POST(request: Request) {
-  const cronSecret = process.env.CRON_SECRET
-  const authHeader = request.headers.get("authorization")
-  const isCron = Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`)
+// that have notifications enabled. Triggered by a cron job with
+// `Authorization: Bearer <CRON_SECRET>` (Vercel Cron sends this header
+// automatically as a GET when the CRON_SECRET env var is set), or manually
+// as a logged-in user (own loans only).
 
+function isCronRequest(request: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET
+  return Boolean(cronSecret && request.headers.get("authorization") === `Bearer ${cronSecret}`)
+}
+
+// Vercel Cron invokes the path with GET — cron auth only, no session fallback.
+export async function GET(request: Request) {
+  if (!isCronRequest(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  return runReminders({})
+}
+
+export async function POST(request: Request) {
   let userFilter: { userId?: string } = {}
-  if (!isCron) {
+  if (!isCronRequest(request)) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     userFilter = { userId: session.user.id }
   }
+  return runReminders(userFilter)
+}
 
+async function runReminders(userFilter: { userId?: string }) {
   const cutoff = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
   const loans = await prisma.loan.findMany({
     where: {
