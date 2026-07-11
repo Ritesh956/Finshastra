@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import crypto from "crypto"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rateLimit"
+import { hashResetToken, isResetTokenUsable } from "@/lib/resetToken"
 
 export async function POST(request: Request) {
   const ip = getClientIp(request.headers)
@@ -18,9 +18,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 })
     }
 
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex")
+    const tokenHash = hashResetToken(token)
     const resetToken = await prisma.passwordResetToken.findUnique({ where: { tokenHash } })
-    if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+    if (!isResetTokenUsable(resetToken)) {
       return NextResponse.json(
         { error: "This reset link is invalid or has expired. Please request a new one." },
         { status: 400 },

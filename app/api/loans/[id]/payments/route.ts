@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isRazorpayConfigured, verifyRazorpaySignature } from "@/lib/razorpay"
 import { rateLimit, rateLimitResponse } from "@/lib/rateLimit"
+import { splitEmiPayment, advanceDueDateByOneMonth } from "@/lib/payments"
 
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -53,13 +54,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
       gatewayPaymentId = body.orderId
     }
 
-    const monthlyRate = loan.interestRate / 12 / 100
-    const interestComponent = Math.round(loan.outstandingBalance * monthlyRate * 100) / 100
-    const principalComponent = Math.max(0, Math.round((amount - interestComponent) * 100) / 100)
-    const newBalance = Math.max(0, Math.round((loan.outstandingBalance - principalComponent) * 100) / 100)
-
-    const nextDue = new Date(loan.nextPaymentDue)
-    nextDue.setMonth(nextDue.getMonth() + 1)
+    const { interestComponent, principalComponent, newBalance, newTotalInterestPaid } = splitEmiPayment(loan, amount)
+    const nextDue = advanceDueDateByOneMonth(loan.nextPaymentDue)
 
     const [payment, updatedLoan] = await prisma.$transaction([
       prisma.payment.create({
@@ -76,7 +72,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
         where: { id: loan.id },
         data: {
           outstandingBalance: newBalance,
-          totalInterestPaid: Math.round((loan.totalInterestPaid + interestComponent) * 100) / 100,
+          totalInterestPaid: newTotalInterestPaid,
           nextPaymentDue: nextDue,
         },
       }),

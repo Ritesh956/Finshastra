@@ -11,7 +11,7 @@ FinShastra — a full-stack loan-management app. Next.js 14 (App Router) + TypeS
 ```bash
 npm run dev        # dev server (port 3000; picks another if occupied)
 npm run build      # production build — TS + ESLint checks are ENFORCED, keep them on
-npm test           # Vitest (utils/*.test.ts)
+npm test           # Vitest (utils/*.test.ts + lib/*.test.ts)
 npx tsc --noEmit   # typecheck
 npx prisma migrate dev   # create/apply migrations after schema changes
 node prisma/seed.js      # seed bank offers (idempotent)
@@ -30,6 +30,7 @@ node prisma/seed.js      # seed bank offers (idempotent)
 - **Auth**: NextAuth credentials provider in `lib/auth.ts` (bcrypt compare against Prisma `User`). `contexts/AuthContext.tsx` wraps NextAuth's `useSession`/`signIn`/`signOut` but exposes the legacy `useAuth()` interface (`user`, `isAuthenticated`, `isLoading`, `login`, `logout`, `signup`, `updateProfile`) — all pages consume that, not NextAuth directly. `middleware.ts` protects `/dashboard` and `/profile`, and also rate-limits `POST /api/auth/callback/credentials` (login) — see Rate limiting below for why that one has to live in middleware instead of `authorize()`. Client-side redirects must check `isLoading` before `isAuthenticated` (session starts in "loading").
 - **Data**: Prisma singleton in `lib/prisma.ts`. Schema in `prisma/schema.prisma` (User, Loan, Payment, BankOffer). SQLite has no arrays — `BankOffer.features` is a JSON-encoded string, parsed in `app/api/bank-offers/route.ts`.
 - **API routes** (`app/api/`): all loan/payment/user routes are session-scoped via `getServerSession(authOptions)` — always verify `loan.userId === session.user.id` before mutating. Payment recording (`loans/[id]/payments`) splits amount into interest/principal at the loan's monthly rate and updates balance + next due date in a `$transaction`.
+- **Route business logic lives in `lib/`, not in the handlers**: payment amortization split + due-date advance in `lib/payments.ts`, alert derivation in `lib/alerts.ts`, reset-token hashing/expiry in `lib/resetToken.ts` — each with a co-located `*.test.ts`. Keep new domain logic in testable pure functions there; route handlers should only do session checks, Prisma I/O, and response shaping. `advanceDueDateByOneMonth` clamps to month-end (Jan 31 → Feb 28/29) — don't replace it with a bare `setMonth(+1)`, which overflows into March.
 - **AI chat** (`app/api/chat/route.ts`): Claude (`claude-opus-4-8`) with the user's real loan portfolio injected into the system prompt; degrades to `getKnowledgeBaseResponse()` when no key or on API error.
 - **EMI math**: `utils/loanCalculations.ts` — reused by both client (live preview) and server (loan creation). Zero-interest loans are handled as `principal / termMonths` at call sites (the formula divides by zero at 0%).
 - **UI**: shadcn/ui components in `components/ui/`, feature components in `components/`. Dashboard (`components/UserDashboard.tsx`) fetches `/api/loans`, `/api/payments`, `/api/bank-offers` and has loading/error/empty states. Toasts via `hooks/use-toast` + `<Toaster />` in `app/layout.tsx`.

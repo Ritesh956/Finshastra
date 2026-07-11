@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { sendMail } from "@/lib/mailer"
 import { rateLimit, getClientIp, rateLimitResponse } from "@/lib/rateLimit"
+import { generateResetToken } from "@/lib/resetToken"
 
 // Issues a password reset token. Always responds 200 so the endpoint can't be
 // used to probe which emails have accounts.
@@ -19,18 +19,13 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({ where: { email: email.toLowerCase().trim() } })
     if (user) {
-      const token = crypto.randomBytes(32).toString("hex")
-      const tokenHash = crypto.createHash("sha256").update(token).digest("hex")
+      const { token, tokenHash, expiresAt } = generateResetToken()
 
       // A new request invalidates any previous outstanding tokens
       await prisma.$transaction([
         prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
         prisma.passwordResetToken.create({
-          data: {
-            userId: user.id,
-            tokenHash,
-            expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-          },
+          data: { userId: user.id, tokenHash, expiresAt },
         }),
       ])
 

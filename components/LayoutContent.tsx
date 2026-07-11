@@ -147,7 +147,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6" suppressHydrationWarning>
             {/* GitHub Link - Left */}
             <a 
-              href="https://github.com/Ritesh956/LATEST_HACK" 
+              href="https://github.com/Ritesh956/Finshastra"
               target="_blank" 
               rel="noreferrer"
               className="group inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-700 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white font-bold text-sm shadow-lg hover:shadow-2xl hover:shadow-purple-500/40 hover:scale-105 transition-all duration-300"
